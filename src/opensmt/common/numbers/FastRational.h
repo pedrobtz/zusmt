@@ -253,8 +253,7 @@ public:
 
     mpq_class getMpq() const {
         if (wordPartValid()) {
-            static_assert(sizeof(long) == 8);
-            return mpq_class{static_cast<long>(num), static_cast<long>(den)};
+            return mpq_class{static_cast<long>(num), static_cast<unsigned long>(den)};
         }
         assert(mpqPartValid());
         return mpq_class{mpq};

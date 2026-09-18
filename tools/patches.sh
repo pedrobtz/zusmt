@@ -102,9 +102,13 @@ patch_exact parsers/smt2new/smt2newlexer.cc \
 #    in the shared object, so rewriting the calls that use them is not enough;
 #    the remaining references have to go too.
 echo "    stdout/stderr FILE* references:"
+#    The same line is also the tree's only GNU named-variadic macro, and
+#    clang -pedantic reports `args...` and `, ## args` as significant
+#    warnings, which fails the check on CRAN's clang container. __VA_OPT__ is
+#    standard C++20 and this package already compiles as C++20.
 patch_exact common/ReportUtils.h \
-  's/#define reportf(format, args...) ( fflush(stdout), REprintf(format, ## args), fflush(stderr) )/#define reportf(format, args...) ( REprintf(format, ## args) )/' \
-  'fflush() around reportf -- REprintf writes to the R console, which R flushes'
+  's/#define reportf(format, args...) ( fflush(stdout), REprintf(format, ## args), fflush(stderr) )/#define reportf(format, ...) ( REprintf(format __VA_OPT__(,) __VA_ARGS__) )/' \
+  'reportf: drop fflush, and use __VA_OPT__ rather than GNU `, ## args`'
 patch_exact smtsolvers/CoreSMTSolver.cc \
   's|^\([[:space:]]*\)fflush(stderr);|\1/* fflush(stderr) dropped: output goes through REprintf */|' \
   'fflush(stderr) after a progress line'
@@ -148,7 +152,22 @@ patch_exact common/numbers/FastRational.cc \
   's|out << (sign?"(- ":"") << mpq_c << (sign?")":"");|out << (sign?"(- ":"") << mpq_c.get_str() << (sign?")":"");|; s|^        out << mpq;|        out << mpq_class(mpq).get_str();|' \
   'stream mpq via get_str() rather than gmpxx operator<<'
 
-# 8. Make the shim visible. Prepending the include is more portable than a
+# 8. Windows is LLP64: long is 32 bits there, 64 on Linux and macOS.
+#    getMpq() asserts sizeof(long) == 8 and then casts both parts of the
+#    word-sized representation through long. The assert is not paranoia --
+#    `den` is a uint32_t, and on a 32-bit signed long a denominator above
+#    INT32_MAX converts to a negative value, which would silently produce a
+#    wrong rational rather than fail. But num/den are int32_t/uint32_t, so
+#    they fit exactly once each goes through the matching signedness, and the
+#    two-argument mpq_class constructor takes mpz_class -- which has a ctor
+#    for unsigned long. So: fix the hazard the assert was guarding, rather
+#    than deleting the guard and hoping.
+echo "    LLP64 (Windows long is 32-bit):"
+patch_exact common/numbers/FastRational.h \
+  '/static_assert(sizeof(long) == 8);/d; s|return mpq_class{static_cast<long>(num), static_cast<long>(den)};|return mpq_class{static_cast<long>(num), static_cast<unsigned long>(den)};|' \
+  'getMpq(): denominator through unsigned long, not long'
+
+# 9. Make the shim visible. Prepending the include is more portable than a
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0

@@ -14,6 +14,6 @@
 #define opensmt_warning( S )      { zusmt::rerr() << "; Warning: " << S << std::endl; }
 #define opensmt_warning2( S, T )  { cerr << "; Warning: " << S << " " << T << endl; }
 
-#define reportf(format, args...) ( REprintf(format, ## args) )
+#define reportf(format, ...) ( REprintf(format __VA_OPT__(,) __VA_ARGS__) )
 
 #endif //OPENSMT_REPORTUTILS_H
