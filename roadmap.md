@@ -349,7 +349,7 @@ something false.
 
 Exit: **met** — check clean with no notes, tarball 496K with the vignette.
 
-## Stage 9 — CRAN submission
+## Stage 9 — CRAN submission — **prepared** (PR #8)
 
 - **Re-enable the `nosuggests` leg** (`.github/workflows/R-CMD-check.yaml`). Off since Stage 8, and
   it is the leg rather than the package: CRAN builds the tarball once with Suggests present and runs
@@ -363,7 +363,28 @@ Exit: **met** — check clean with no notes, tarball 496K with the vignette.
 - Verify: `SystemRequirements` accurate, `LICENSE.note` present, copyright holders credited,
   install time and tarball size acceptable, no compiler warnings on CRAN's flavours, `--as-cran`
   clean including the "libs size" note.
-- Expect a reviewer question about the bundled third-party sources; have the provenance answer ready.
+- Expect a reviewer question about the bundled third-party sources; `cran-comments.md` answers it
+  before it is asked — provenance, licensing, and what the patches do and why.
+
+What the `cran-extrachecks` pass changed:
+
+- **`[cph]` was missing from the maintainer.** OpenSMT's authors carried it, the person submitting
+  the package did not.
+- **The Description was two sentences and cited nothing.** CRAN asks for three or four and for
+  method references where they exist. It now cites the OpenSMT paper — verified by resolving the DOI
+  against Crossref rather than written from memory, which is the same failure mode as the fabricated
+  maintainer name in Stage 1.
+- **The README told people to install from GitHub**, which is the wrong first instruction for a
+  package on CRAN.
+- `print.zusmt_solver` had `@export` and no documentation; `cran-comments.md` needed build-ignoring.
+
+**Still open before an actual submission**, and neither is fixable from this repository:
+
+1. `sanitizers` — parked on `r-actions` setting `CXX17`/`CXX20` and their `*FLAGS`. Worth resolving
+   before submitting: UBSan is the check most likely to find what valgrind and rchk do not, on a
+   package that has already shipped one memory bug.
+2. `nosuggests` — parked on `--no-build-vignettes` in that job's `build_args`. CRAN runs this
+   flavour itself, so the submission is checked against it whether or not our CI is.
 
 ## Standing concerns
 

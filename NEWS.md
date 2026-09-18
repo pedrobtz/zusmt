@@ -1,4 +1,6 @@
-# zusmt 0.0.0.9000
+# zusmt 0.1.0
+
+* First release.
 
 * Documentation: a README and a `vignette("zusmt")` built around problems that
   run, a pkgdown reference index, and `.github/CONTRIBUTING.md` covering how to

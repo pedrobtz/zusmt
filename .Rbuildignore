@@ -10,3 +10,4 @@
 ^conftest
 ^doc$
 ^Meta$
+^cran-comments\.md$

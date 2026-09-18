@@ -15,6 +15,12 @@ the package.
 ## Installation
 
 ``` r
+install.packages("zusmt")
+```
+
+Or the development version:
+
+``` r
 # install.packages("pak")
 pak::pak("pedrobtz/zusmt")
 ```

@@ -4,9 +4,9 @@
 \name{zusmt-package}
 \alias{zusmt}
 \alias{zusmt-package}
-\title{zusmt: Bindings to the 'OpenSMT' Satisfiability Modulo Theories Solver}
+\title{zusmt: Satisfiability Modulo Theories Solving with 'OpenSMT'}
 \description{
-Bundles the 'OpenSMT' satisfiability modulo theories (SMT) solver \url{https://github.com/usi-verification-and-security/opensmt} and exposes it to R, so that solving does not require a separately installed solver binary.
+Solve satisfiability modulo theories (SMT) problems using the bundled 'OpenSMT' solver, described in Hyvaerinen, Marescotti, Alt and Sharygina (2016) \doi{10.1007/978-3-319-40970-2_35}. Problems are written in the 'SMT-LIB' standard language and answers come back as R values, with model values carrying the solver's exact rational alongside the double. Supported theories include uninterpreted functions, linear integer and real arithmetic and their combinations, difference logic, and arrays. The solver is compiled into the package, so no separately installed solver binary is required.
 }
 \seealso{
 Useful links:
@@ -17,11 +17,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Pedro Baltazar \email{pedrobtz@gmail.com}
+\strong{Maintainer}: Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 
 Authors:
 \itemize{
-  \item Pedro Baltazar \email{pedrobtz@gmail.com}
+  \item Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 }
 
 Other contributors:
