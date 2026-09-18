@@ -1,0 +1,24 @@
+# Is the bundled OpenSMT stale?
+#
+# vendor.yml guards against drift -- someone editing the bundled library.
+# This guards against staleness: sitting on v2.9.2 while upstream ships a fix
+# for something we compile. Vendored C++ has no Dependabot, so watching
+# upstream is part of the cost of vendoring.
+on:
+  schedule:
+    # Weekly. A new upstream release is not urgent, and a daily job that finds
+    # nothing 364 times a year is one people stop reading.
+    - cron: "37 6 * * 1"
+  workflow_dispatch:
+
+name: vendor-upstream
+
+jobs:
+  upstream:
+    uses: pedrobtz/r-actions/.github/workflows/vendor-upstream.yml@v1
+    permissions:
+      contents: read
+      issues: write
+    with:
+      upstream-repo: usi-verification-and-security/opensmt
+      current-version: sed -n 's/^OPENSMT_VERSION=//p' tools/vendor.sh
