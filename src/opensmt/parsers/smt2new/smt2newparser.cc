@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
@@ -96,9 +97,9 @@ int osmt_yylex(YYSTYPE* lvalp, YYLTYPE* llocp, void* scanner);
 void osmt_yyerror( YYLTYPE* locp, Smt2newContext* context, const char * s )
 {
   if (context->interactive)
-    printf("At interactive input: %s\n", s);
+    Rprintf("At interactive input: %s\n", s);
   else
-    printf( "At line %d: %s\n", locp->first_line, s );
+    Rprintf( "At line %d: %s\n", locp->first_line, s );
 //  exit( 1 );
 }
 
@@ -2885,7 +2886,7 @@ yyreduce:
                 (yyval.snode) = new ASTNode(BOOL_T, strdup((yyvsp[0].snode)->getValue())); delete (yyvsp[0].snode);
             }
             else {
-                printf("Syntax error: expecting either 'true' or 'false', got '%s'\n", str);
+                Rprintf("Syntax error: expecting either 'true' or 'false', got '%s'\n", str);
                 delete (yyvsp[0].snode);
                 YYERROR;
             }

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -227,7 +228,7 @@ public:
 
     virtual ~Egraph() {
 #ifdef STATISTICS
-        printStatistics(std::cerr);
+        printStatistics(zusmt::rerr());
 #endif // STATISTICS
     }
 

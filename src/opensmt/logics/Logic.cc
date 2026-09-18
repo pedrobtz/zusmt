@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  * Copyright (c) 2012-2022, Antti Hyvarinen <antti.hyvarinen@gmail.com>
  * Copyright (c) 2018-2022, Martin Blicha <martin.blicha@gmail.com>
@@ -465,7 +466,7 @@ PTRef Logic::mkXor(vec<PTRef> && args) {
     tr = mkFun(getSym_xor(), std::move(args));
 
     if (tr == PTRef_Undef) {
-        printf("Error in mkXor");
+        Rprintf("Error in mkXor");
         assert(0);
     }
 
@@ -491,7 +492,7 @@ PTRef Logic::mkImpl(vec<PTRef> && args) {
     }
 
     if (tr == PTRef_Undef) {
-        printf("Error in mkImpl");
+        Rprintf("Error in mkImpl");
         assert(0);
     }
 
@@ -597,7 +598,7 @@ PTRef Logic::mkNot(PTRef arg) {
     else { tr = mkFun(getSym_not(), {arg}); }
 
     if (tr == PTRef_Undef) {
-        printf("Error in mkNot");
+        Rprintf("Error in mkNot");
         assert(0);
     }
 
@@ -612,7 +613,7 @@ PTRef Logic::mkVar(SRef s, char const * name, bool isInterpreted) {
     SymRef sr = sym_store.newSymb(name, s, {}, isInterpreted ? SymConf::Interpreted : SymConf::Default);
     assert(sr != SymRef_Undef);
     if (sr == SymRef_Undef) {
-        std::cerr << "Unexpected situation in  Logic::mkVar for " << name << std::endl;
+        zusmt::rerr() << "Unexpected situation in  Logic::mkVar for " << name << std::endl;
         assert(symNameToRef(name).size() == 1);
         sr = symNameToRef(name)[0];
     }

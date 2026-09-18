@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
 Fast rationals
 David Monniaux, VERIMAG 2008-2009
@@ -87,7 +88,7 @@ void FastRational::print(std::ostream & out) const
         assert(mpqPartValid());
         mpq_class mpq_c( mpq );
         if ( sign ) mpq_c = -mpq_c;
-        out << (sign?"(- ":"") << mpq_c << (sign?")":"");
+        out << (sign?"(- ":"") << mpq_c.get_str() << (sign?")":"");
     }
 }
 
@@ -101,7 +102,7 @@ void FastRational::print_(std::ostream & out) const
         }
     } else {
         assert(mpqPartValid());
-        out << mpq;
+        out << mpq_class(mpq).get_str();
     }
 }
 
@@ -219,12 +220,12 @@ FastRational get_multiplicand(const std::vector<FastRational>& reals)
         char *buf_new;
 
         for (int j = 0; j < dens.size(); j++) {
-            asprintf(&buf_new, "%s%s%s", buf, dens[j].get_str().c_str(),
+            zusmt::alloc_printf(&buf_new, "%s%s%s", buf, dens[j].get_str().c_str(),
                      j == dens.size() - 1 ? "" : ", ");
             free(buf);
             buf = buf_new;
         }
-        printf("Dens size now %lu, and individual are denominators: %s\n", dens.size(), buf);
+        Rprintf("Dens size now %lu, and individual are denominators: %s\n", dens.size(), buf);
         free(buf);
 #endif
         if (dens.size() == 1) {
@@ -245,7 +246,7 @@ FastRational get_multiplicand(const std::vector<FastRational>& reals)
         }
     }
 #ifdef PRINTALOT
-    printf("Multiplicand is %s\n", mult.get_str().c_str());
+    Rprintf("Multiplicand is %s\n", mult.get_str().c_str());
 #endif
     return mult;
 }

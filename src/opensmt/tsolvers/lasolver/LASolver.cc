@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2019-2022, Antti Hyvarinen <antti.hyvarinen@gmail.com>
  *  Copyright (c) 2019-2025, Martin Blicha <martin.blicha@gmail.com>
@@ -127,7 +128,7 @@ void LASolver::storeExplanation(Simplex::Explanation &&explanationBounds) {
 
 bool LASolver::check_simplex(bool complete) {
     // StopWatch check_timer(egraphStats.simplex_timer);
-//    printf(" - check %d\n", debug_check_count++);
+//    Rprintf(" - check %d\n", debug_check_count++);
     (void)complete;
     // check if we stop reading constraints
     if (status == INIT) {
@@ -142,8 +143,8 @@ bool LASolver::check_simplex(bool complete) {
     }
 
     getStatus() ? generalTSolverStats.sat_calls ++ : generalTSolverStats.unsat_calls ++;
-//    printf(" - check ended\n");
-//    printf(" => %s\n", getStatus() ? "sat" : "unsat");
+//    Rprintf(" - check ended\n");
+//    Rprintf(" => %s\n", getStatus() ? "sat" : "unsat");
 //    if (getStatus())
 //        model.printModelState();
     return getStatus();
@@ -334,7 +335,7 @@ bool LASolver::assertLit(PtAsgn asgn)
 {
     assert(asgn.sgn != l_Undef);
 
-//    printf("Assert %d\n", debug_assert_count++);
+//    Rprintf("Assert %d\n", debug_assert_count++);
 
     // Special cases of the "inequalitites"
     if (logic.isTrue(asgn.tr) && asgn.sgn == l_True) {
@@ -371,10 +372,10 @@ bool LASolver::assertLit(PtAsgn asgn)
     LABoundRefPair p = getBoundRefPair(asgn.tr);
     LABoundRef bound_ref = asgn.sgn == l_False ? p.neg : p.pos;
 
-//    printf("Model state\n");
+//    Rprintf("Model state\n");
 //    model.printModelState();
-//    printf("Asserting %s (%d)\n", boundStore.printBound(bound_ref), asgn.tr.x);
-//    printf(" - equal to %s%s\n", asgn.sgn == l_True ? "" : "not ", logic.pp(asgn.tr));
+//    Rprintf("Asserting %s (%d)\n", boundStore.printBound(bound_ref), asgn.tr.x);
+//    Rprintf(" - equal to %s%s\n", asgn.sgn == l_True ? "" : "not ", logic.pp(asgn.tr));
 
     if (assertBound(bound_ref)) {
         assert(getStatus());
@@ -544,8 +545,8 @@ bool LASolver::setStatus( LASolverStatus s )
 
 void LASolver::getSimpleDeductions(LABoundRef br)
 {
-//    printf("Deducing from bound %s\n", boundStore.printBound(br));
-//    printf("The full bound list for %s:\n%s\n", logic.printTerm(lva[v].getPTRef()), boundStore.printBounds(v));
+//    Rprintf("Deducing from bound %s\n", boundStore.printBound(br));
+//    Rprintf("The full bound list for %s:\n%s\n", logic.printTerm(lva[v].getPTRef()), boundStore.printBounds(v));
 
     auto const & bound = boundStore[br];
     LVRef v = bound.getLVRef();
@@ -620,7 +621,7 @@ void LASolver::computeModel()
 LASolver::~LASolver( )
 {
 #ifdef STATISTICS
-    printStatistics(std::cerr);
+    printStatistics(zusmt::rerr());
 #endif // STATISTICS
 }
 
@@ -857,7 +858,7 @@ TRes LASolver::cutFromProof() {
             constraints.push_back(DefiningConstraint{term, rhs});
         }
 
-//        std::cout << logic.pp(term) << " = " << rhs << std::endl;
+//        zusmt::rout() << logic.pp(term) << " = " << rhs << std::endl;
     }
     auto getVarValue = [this](PTRef var) {
         assert(this->logic.isVar(var));

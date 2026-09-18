@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -31,11 +32,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <smtsolvers/SimpSMTSolver.h>
 
 #ifdef PEDANTIC_DEBUG
-#define TRACE(x) std::cerr << x << std::endl;
+#define TRACE(x) zusmt::rerr() << x << std::endl;
 #define TRACE_FLA_VEC(v)                                                                                               \
     for (unsigned i = 0; i < v.size_(); ++i)                                                                           \
-        std::cerr << i << ": " << logic.printTerm(v[i]) << '\n';                                                       \
-    std::cerr << std::endl;
+        zusmt::rerr() << i << ": " << logic.printTerm(v[i]) << '\n';                                                       \
+    zusmt::rerr() << std::endl;
 #else
 #define TRACE(x)
 #define TRACE_FLA_VEC(v)

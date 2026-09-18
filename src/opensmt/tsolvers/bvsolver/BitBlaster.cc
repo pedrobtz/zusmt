@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -174,7 +175,7 @@ char*
 BitBlaster::getName(const char* base) const
 {
     char* out;
-    int written = asprintf(&out, "%s%d", base, bs.size());
+    int written = zusmt::alloc_printf(&out, "%s%d", base, bs.size());
     assert(written >= 0); (void)written;
     return out;
 }
@@ -185,7 +186,7 @@ BitBlaster::getBVVars(const char* base, vec<PTRef>& vars, int width)
     vars.growTo(width);
     for (int i = 0; i < width; i++) {
         char* bit_name;
-        int written = asprintf(&bit_name, ".%s%02d_", base, i);
+        int written = zusmt::alloc_printf(&bit_name, ".%s%02d_", base, i);
         assert(written >= 0); (void)written;
         vars[i] = logic.mkBoolVar(getName(bit_name));
         free(bit_name);
@@ -249,7 +250,7 @@ BitBlaster::bbTerm(PTRef tr)
     //
     // Exit if term is not handled
     //
-    std::cerr << "term not handled (yet ?): " << logic.printTerm(tr) << "\n";
+    zusmt::rerr() << "term not handled (yet ?): " << logic.printTerm(tr) << "\n";
     return BVRef_Undef;
 }
 
@@ -2154,7 +2155,7 @@ BitBlaster::notifyEqualities()
         }
     }
 
-    std::cerr << "; Added " << added_eqs << " equalities for bind" << '\n';
+    zusmt::rerr() << "; Added " << added_eqs << " equalities for bind" << '\n';
 
     last_refined = refined.size();
 

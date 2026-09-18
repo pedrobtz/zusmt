@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -54,7 +55,7 @@ void CoreSMTSolver::dumpCNF( )
   dump_out << "(check-sat)" << '\n';
   dump_out << "(exit)" << '\n';
   dump_out.close( );
-  std::cerr << "[Dumped " << name << "]" << '\n';
+  zusmt::rerr() << "[Dumped " << name << "]" << '\n';
 }
 
 void CoreSMTSolver::verifyModel()
@@ -90,7 +91,7 @@ void CoreSMTSolver::checkLiteralCount()
       cnt += ca[clauses[i]].size();
 
   if ((int)clauses_literals != cnt){
-    fprintf(stderr, "literal count: %d, real value = %d\n", (int)clauses_literals, cnt);
+    REprintf("literal count: %d, real value = %d\n", (int)clauses_literals, cnt);
     assert((int)clauses_literals == cnt);
   }
 }
@@ -100,7 +101,7 @@ void CoreSMTSolver::printTrail( )
   for (int i = 0; i < trail.size(); i++)
   {
     printLit(trail[i]);
-    std::cerr << ' ' << (sign(trail[i]) ? "not " : "")
+    zusmt::rerr() << ' ' << (sign(trail[i]) ? "not " : "")
         << theory_handler.getLogic().printTerm(theory_handler.varToTerm(var(trail[i]))) << '\n';
   }
 }

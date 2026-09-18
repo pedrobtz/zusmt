@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2012 - 2022, Antti Hyvarinen <antti.hyvarinen@gmail.com>
  *  Copyright (c) 2022 - 2024, Martin Blicha <martin.blicha@gmail.com>
@@ -218,10 +219,10 @@ vec<PTRef> const & MainSolver::getAssertionsAtLevel(std::size_t level) const {
 void MainSolver::printCurrentAssertionsAsQuery() const {
     char * base_name = config.dump_query_name();
     if (base_name == NULL)
-        printCurrentAssertionsAsQuery(std::cout);
+        printCurrentAssertionsAsQuery(zusmt::rout());
     else {
         char * s_file_name;
-        int chars_written = asprintf(&s_file_name, "%s-%d.smt2", base_name, check_called);
+        int chars_written = zusmt::alloc_printf(&s_file_name, "%s-%d.smt2", base_name, check_called);
         (void)chars_written;
         std::ofstream stream;
         stream.open(s_file_name);
@@ -269,7 +270,7 @@ std::unique_ptr<Model> MainSolver::getModel() {
 }
 
 void MainSolver::printResolutionProofSMT2() const {
-    printResolutionProofSMT2(std::cout);
+    printResolutionProofSMT2(zusmt::rout());
 }
 
 void MainSolver::printResolutionProofSMT2(std::ostream & os) const {
@@ -341,7 +342,7 @@ sstat MainSolver::giveToSolver(PTRef root, FrameId push_id) {
 sstat MainSolver::check() {
     ++check_called;
     if (config.timeQueries()) {
-        printf("; %s query time so far: %f\n", solver_name.c_str(), query_timer.getTime());
+        Rprintf("; %s query time so far: %f\n", solver_name.c_str(), query_timer.getTime());
         StopWatch sw(query_timer);
     }
     if (isLastFrameUnsat()) { return s_False; }

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 //
 // Created by prova on 02.09.20.
 //
@@ -11,7 +12,7 @@ void Dag::writeDagToStream(std::ostream & out) const {
     std::string annotations_str;
     std::string edges_str;
     auto & nodes = getNodes();
-    std::cout << "Starting production of a graph" << std::endl;
+    zusmt::rout() << "Starting production of a graph" << std::endl;
     for (NodeRef const node : nodes) {
         if (isTopLevelIte(na[node].getTerm())) {
             annotations_str += " " + std::to_string(na[node].getId()) + " [shape=box];\n";

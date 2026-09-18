@@ -5,9 +5,11 @@
 #include <R_ext/Visibility.h>
 
 extern "C" SEXP C_toolchain_report(void);
+extern "C" SEXP C_smoke_solve(SEXP contradiction);
 
 static R_CallMethodDef const CallEntries[] = {
     {"C_toolchain_report", (DL_FUNC) &C_toolchain_report, 0},
+    {"C_smoke_solve", (DL_FUNC) &C_smoke_solve, 1},
     {NULL, NULL, 0}
 };
 

@@ -139,7 +139,7 @@ because neither tool can be an install-time dependency.
 Exit: **met** — `tools/vendor.sh` run twice produces byte-identical checksums, and
 `tools/vendor/verify` passes against the manifest.
 
-## Stage 3 — Build it with R's toolchain
+## Stage 3 — Build it with R's toolchain — **done** (PR #3, with Stage 4)
 
 - Generate `src/Makevars` object list from the vendored tree (a `tools/` script emitting an explicit
   `OBJECTS = opensmt/api/MainSolver.o ...`). Explicit list, not `$(wildcard)` — that would force
@@ -150,10 +150,25 @@ Exit: **met** — `tools/vendor.sh` run twice produces byte-identical checksums,
 - Watch install time and `.so` size; if unacceptable, revisit pruning (interpolation, proofs,
   lookahead and unsat cores are candidates).
 
-Exit: `devtools::load_all()` compiles the whole vendored tree; a smoke `.Call` runs
-`MainSolver` on the `examples/test1.cc` problem and returns `sat`/`unsat` to R.
+**Stages 3 and 4 turned out to be one stage.** Stage 3 alone compiles and links, but
+`R CMD check --as-cran` then reports a compiled-code WARNING for upstream's `std::cerr`, `printf`,
+`rand`/`srand` and `exit`/`abort`, and the workflow fails on a WARNING — so a Stage 3 PR could not be
+green, and the two shipped together.
 
-## Stage 4 — Patch upstream for R hosting
+Two findings worth keeping:
+
+- **The object list must come from upstream's CMakeLists, not from `find`.** v2.9.2 ships
+  `tsolvers/bvsolver/` and `logics/BVLogic.cc` but comments both out of its build, and they do not
+  compile (`BVLogic` is left incomplete). 87 sources build, of 91 present. This also reverses Stage
+  2's decision to delete the `CMakeLists.txt` files as "a trap": they are the only authoritative
+  statement of what upstream compiles, and `tools/objects.sh` now reads them.
+- **R compiles the vendored tree in place**, so a build leaves `.o` files inside `src/opensmt/` and
+  the checksum manifest has to exclude them, or `verify` fails on any built tree.
+
+Exit: **met** — 87 sources compile, and `smoke_solve()` returns `unsat` for `a AND NOT a` and `sat`
+for `a`, from R, through `MainSolver`.
+
+## Stage 4 — Patch upstream for R hosting — **done** (PR #3, with Stage 3)
 
 Maintain these as a numbered patch series under `tools/patches/`, applied by `vendor.sh`, so a version
 bump is re-applicable rather than re-discovered.
@@ -166,7 +181,45 @@ bump is re-applicable rather than re-discovered.
 - Long-running solves must remain interruptible: plan for `R_CheckUserInterrupt()` via OpenSMT's stop
   callback (`GlobalStop`), never a longjmp through C++ frames.
 
-Exit: `R CMD check --as-cran` reports no `exit`/`abort`/stdout findings.
+What the rules are, in `tools/patches.sh`, each asserting it changed something so that a bump which
+makes one a no-op fails loudly rather than silently leaving a call site behind:
+
+| Rule | Scale |
+| --- | --- |
+| `std::cout`/`std::cerr` → `zusmt::rout()`/`rerr()`, ostreams over `Rprintf`/`REprintf` | 14 + 20 files |
+| `printf` → `Rprintf`; `fprintf(stderr,` → `REprintf(` | 19 + 7 files |
+| `rand`/`srand` → a self-contained xorshift | 2 files |
+| `exit`/`abort` → `zusmt::fatal()`, which throws | 4 call sites, individually |
+| the `stdout`/`stderr` `FILE*` symbols themselves | 3 files |
+
+The last two are per-call-site rather than blanket rewrites, because `Interpret` has a *method* named
+`exit()` and 4 `fprintf` calls write to a real file rather than the console — a blanket rule would
+either not compile or send proof output to the console.
+
+Windows took five CI round-trips, each a different assumption: no `<sys/resource.h>`, no
+`suseconds_t`, a 32-bit `long`, then `dprintf`/`asprintf` and a `size_t` signature mismatch.
+A sixth was a *link* failure, not a compile one: upstream's `inline static thread_local mpz_class
+temp` compiles everywhere and links nowhere on mingw, which emits the TLS init wrapper without
+COMDAT linkage so all 28 translation units touching `FastRational` define it.
+`tools/check-mingw.sh` covers both classes locally — compile by default, `--link` to link the
+objects with unresolved symbols ignored purely to find duplicate definitions. Use it after a bump,
+before pushing.
+
+The portability problems CI found, all now rules in the same script:
+
+- **Windows has no `<sys/resource.h>`.** Upstream times itself with `getrusage()`, so the mingw build
+  failed at the first file including `Timer.h`. [src/r_rusage.h](src/r_rusage.h) supplies it on
+  Windows via `clock()` — not `GetProcessTimes()`, because `<windows.h>` would reach 87 translation
+  units and bring its `min`/`max` and `ERROR` macros with them. The two `<sys/wait.h>` includes were
+  vestigial (neither file calls `fork` or `wait`) and are simply dropped.
+- **libgmpxx is an ABI dependency, and was only needed for one function.** `operator<<(ostream&,
+  mpq)` lives in the library and is compiled against whichever C++ standard library built it, so on
+  a libc++ toolchain linking a libstdc++-built libgmpxx — CRAN's `clang23` container, FreeBSD, any
+  mixed setup — the shared object fails to load with an undefined symbol. It was the *only* C++
+  symbol we took from libgmpxx; everything else is plain C. Two call sites now use header-only
+  `get_str()` instead, which drops the dependency rather than working around it.
+
+Exit: **met** — `R CMD check --as-cran` reports no compiled-code findings.
 
 ## Stage 5 — The R/C++ boundary
 

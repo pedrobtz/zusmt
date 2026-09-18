@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -137,15 +138,15 @@ void ProofGraph::printClause(ProofNode* n)
 {
 	assert(n);
 	std::vector<Lit>& cl=n->getClause();
-	std::cerr << n->getId();
-	if(!n->isLeaf()) std::cerr << "(" << n->getAnt1()->getId() << "," << n->getAnt2()->getId() << ")";
-	std::cerr << ": ";
+	zusmt::rerr() << n->getId();
+	if(!n->isLeaf()) zusmt::rerr() << "(" << n->getAnt1()->getId() << "," << n->getAnt2()->getId() << ")";
+	zusmt::rerr() << ": ";
 	for(size_t k=0;k<cl.size();k++)
 	{
-		if(sign(cl[k])) std::cerr << "-";
-		std::cerr << var(cl[k]) << " ";
+		if(sign(cl[k])) zusmt::rerr() << "-";
+		zusmt::rerr() << var(cl[k]) << " ";
 	}
-	std::cerr << '\n';
+	zusmt::rerr() << '\n';
 }
 
 void ProofGraph::printClause(ProofNode* n, std::ostream & os)
@@ -161,19 +162,19 @@ void ProofGraph::printClause(ProofNode* n, std::ostream & os)
 
 void ProofGraph::printRuleApplicationStatus()
 {
-	std::cerr << "# Rules application status " << '\n';
-	std::cerr << "# A1:           " << A1 << '\n';
-	std::cerr << "# A1prime:      " << A1prime << '\n';
-	std::cerr << "# A1B:          " << A1B << '\n';
-	std::cerr << "# A2:           " << A2 << '\n';
-	std::cerr << "# A2B:          " << A2B << '\n';
-	std::cerr << "# A2U:          " << A2U << '\n';
-	std::cerr << "# B1:           " << B1 << '\n';
-	std::cerr << "# B2prime:      " << B2prime << '\n';
-	std::cerr << "# B2:           " << B2 << '\n';
-	std::cerr << "# B3:           " << B3 << '\n';
-	std::cerr << "# duplications: " << duplications << '\n';
-	std::cerr << "# swap_ties:    " << swap_ties << '\n';
+	zusmt::rerr() << "# Rules application status " << '\n';
+	zusmt::rerr() << "# A1:           " << A1 << '\n';
+	zusmt::rerr() << "# A1prime:      " << A1prime << '\n';
+	zusmt::rerr() << "# A1B:          " << A1B << '\n';
+	zusmt::rerr() << "# A2:           " << A2 << '\n';
+	zusmt::rerr() << "# A2B:          " << A2B << '\n';
+	zusmt::rerr() << "# A2U:          " << A2U << '\n';
+	zusmt::rerr() << "# B1:           " << B1 << '\n';
+	zusmt::rerr() << "# B2prime:      " << B2prime << '\n';
+	zusmt::rerr() << "# B2:           " << B2 << '\n';
+	zusmt::rerr() << "# B3:           " << B3 << '\n';
+	zusmt::rerr() << "# duplications: " << duplications << '\n';
+	zusmt::rerr() << "# swap_ties:    " << swap_ties << '\n';
 }
 
 }

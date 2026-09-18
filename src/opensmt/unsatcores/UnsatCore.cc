@@ -1,3 +1,4 @@
+#include <r_compat.h>
 #include "UnsatCore.h"
 
 #include <common/TermNames.h>
@@ -8,7 +9,7 @@
 namespace opensmt {
 
 void UnsatCore::print() const {
-    print(std::cout);
+    print(zusmt::rout());
 }
 
 void UnsatCore::print(std::ostream & os) const {

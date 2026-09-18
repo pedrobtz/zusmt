@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -189,7 +190,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForPredicatePushing(RuleConte
 				else if (t1 != rB3 && t2 == rB3) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
                 else {
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
                 }
 			}
 			//Case both swap
@@ -230,7 +231,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForPredicatePushing(RuleConte
 					else if ((t2 == rA2B && (t1 == rA2 || t1 == rA2u)) || (t2 == rA1B && t1 == rA1)) res = ApplicationResult::APPLY_SECOND;
 					//Break ties randomly
 					else {
-					    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+					    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 					}
 				}
 			}
@@ -352,7 +353,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForUnitsPushingDown(RuleConte
 				else if (t1!=rB3 && t2==rB3) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
                 else {
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
                 }
 			}
 			//Case both swap
@@ -375,7 +376,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForUnitsPushingDown(RuleConte
 				else if((t2==rA2B && (t1==rA2 || t1==rA2u)) || (t2==rA1B && t1==rA1)) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
                 else {
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
                 }
 			}
             return res;
@@ -430,7 +431,7 @@ bool ProofGraph::allowCutRuleForReduction(RuleContext& ra)
  ApplicationResult ProofGraph::handleRuleApplicationForReduction(RuleContext & ra1, RuleContext & ra2)
 {
 	// Randomize application of rules
-	if ( additionalRandomization() && rand()%2==0 ) return ApplicationResult::NO_APPLICATION;
+	if ( additionalRandomization() && zusmt::pseudo_rand()%2==0 ) return ApplicationResult::NO_APPLICATION;
 
 	// Swap application rule
 	bool(ProofGraph::*allowSwap)(RuleContext& ra) = &ProofGraph::allowSwapRuleForReduction;
@@ -504,7 +505,7 @@ bool ProofGraph::allowCutRuleForReduction(RuleContext& ra)
 				else if(t1 != rB3 && t2 == rB3) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
 				else {
-					res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+					res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
 			//Case both swap
@@ -528,7 +529,7 @@ bool ProofGraph::allowCutRuleForReduction(RuleContext& ra)
 				//Break ties randomly
 				else {
 					swap_ties++;
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
             return res;
@@ -637,7 +638,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForStrongerWeakerInterpolant(
 				else if (t1 != rB3 && t2 == rB3) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
 				else {
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
 			//Case both swap
@@ -661,7 +662,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForStrongerWeakerInterpolant(
 				//Break ties randomly
 				else {
 					swap_ties++;
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
 			return res;
@@ -769,7 +770,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForCNFinterpolant(RuleContext
 				else if (t1 != rB3 && t2 == rB3) res = ApplicationResult::APPLY_SECOND;
 				//Break ties randomly
 				else {
-				    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+				    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
 			//Case both swap
@@ -793,7 +794,7 @@ ApplicationResult ProofGraph::handleRuleApplicationForCNFinterpolant(RuleContext
 				//Break ties randomly
 				else {
 					swap_ties++;
-                    res = rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
+                    res = zusmt::pseudo_rand() % 2 == 0 ? ApplicationResult::APPLY_FIRST : ApplicationResult::APPLY_SECOND;
 				}
 			}
             return res;
@@ -823,7 +824,7 @@ bool ProofGraph::chooseReplacingAntecedent( ProofNode* n )
 		else if(n->getAnt2()->getClauseSize()> n->getAnt1()->getClauseSize()) choose_ant1=true;
 		else
 		{
-			if(rand()%2==0)choose_ant1=true; else choose_ant1=false;
+			if(zusmt::pseudo_rand()%2==0)choose_ant1=true; else choose_ant1=false;
 		}
 	}
 	return choose_ant1;

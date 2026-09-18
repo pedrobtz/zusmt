@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2018-2025, Martin Blicha <martin.blicha@gmail.com>
  *
@@ -247,23 +248,23 @@ namespace {
         (void)print_matrix; // MB: to supress compiler warning for this unused helpful debug method
         for (auto const & row : matrix) {
             for (auto const & elem : row) {
-                std::cout << elem << " ";
+                zusmt::rout() << elem << " ";
             }
-            std::cout << '\n';
+            zusmt::rout() << '\n';
         }
-        std::cout << '\n';
+        zusmt::rout() << '\n';
     }
 
     void print_basis(std::vector<std::vector<Real>> const & nullBasis) {
         (void)print_basis; // MB: to supress compiler warning for this unused helpful debug method
-        std::cout << "Basis: " << '\n';
+        zusmt::rout() << "Basis: " << '\n';
         for (auto const & base : nullBasis) {
             for (auto const & elem : base) {
-                std::cout << elem << ' ';
+                zusmt::rout() << elem << ' ';
             }
-            std::cout << '\n';
+            zusmt::rout() << '\n';
         }
-        std::cout << '\n';
+        zusmt::rout() << '\n';
     }
 
 #endif // TRACE
@@ -329,18 +330,18 @@ namespace {
             auto const & coeff = *it_coeff;
             if (coeff.isZero()) { continue; } // when some basis is found, some coordinates could be zero; ignore those
             auto const & ineq = *it_ineq;
-            trace(std::cout << "Original explanation: " << logic.printTerm(ineq.explanation)
+            trace(zusmt::rout() << "Original explanation: " << logic.printTerm(ineq.explanation)
                             << "; negated: " << ineq.negated << '\n');
-            trace(std::cout << "LAExpr as PTrEf: " << logic.printTerm(ineq.expr.toPTRef()) << '\n');
-            trace(std::cout << "LAExpr as stored: ");
-            trace(ineq.expr.print(std::cout); std::cout << std::endl);
+            trace(zusmt::rout() << "LAExpr as PTrEf: " << logic.printTerm(ineq.expr.toPTRef()) << '\n');
+            trace(zusmt::rout() << "LAExpr as stored: ");
+            trace(ineq.expr.print(zusmt::rout()); zusmt::rout() << std::endl);
             if (ineq.negated) {
                 strictness = Strictness::STRICT;
                 poly.merge(ineq.poly, -coeff);
             } else {
                 poly.merge(ineq.poly, coeff);
             }
-            trace(init.print(std::cout));
+            trace(init.print(zusmt::rout()));
         }
         return toInequality(std::move(poly), logic, itpSort, strictness);
     }
@@ -426,12 +427,12 @@ PTRef FarkasInterpolator::getDecomposedInterpolant(icolor_t color) {
     for (int i = 0; i < explanations.size(); ++i) {
         assert(explanation_coeffs[i] > 0);
         candidates.emplace_back(explanations[i], explanation_coeffs[i]);
-        trace(std::cout << "Explanation " << logic.printTerm(explanations[i].tr) << " with coeff "
+        trace(zusmt::rout() << "Explanation " << logic.printTerm(explanations[i].tr) << " with coeff "
                         << explanation_coeffs[i] << " is negated: " << (explanations[i].sgn == l_False) << '\n');
         bool isA = this->isInPartitionOfColor(icolor_t::I_A, explanations[i].tr);
         bool isB = this->isInPartitionOfColor(icolor_t::I_B, explanations[i].tr);
-        if (isA) { trace(std::cout << "This explanation is from A\n"); }
-        if (isB) { trace(std::cout << "This explanation is from B\n"); }
+        if (isA) { trace(zusmt::rout() << "This explanation is from A\n"); }
+        if (isB) { trace(zusmt::rout() << "This explanation is from B\n"); }
     }
     auto it = std::partition(candidates.begin(), candidates.end(), [color, this](std::pair<PtAsgn, Real> const & expl) {
         return this->isInPartitionOfColor(color, expl.first.tr);
@@ -509,7 +510,7 @@ PTRef FarkasInterpolator::getDecomposedInterpolant(icolor_t color) {
         auto nullity = getNullity(matrix);
         // if the space of solutions does not have at least two vector in basis, we cannot do anything
         if (nullity <= 1) {
-            //            std::cout << "Nullity space has single-vector basis" << '\n';
+            //            zusmt::rout() << "Nullity space has single-vector basis" << '\n';
             interpolant_inequalities.push_back(sumInequalities(explanations_with_locals, logic));
         } else {
             toReducedRowEcholonForm(matrix);

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -430,7 +431,7 @@ void ProofGraph::applyRuleB3( RuleContext& ra )
         for(unsigned u = 0; u < getGraphSize(); u++)
             if(getNode(u) != NULL && !isRoot(getNode(u)) && getNode(u)->getNumResolvents() == 0)
             {
-                std::cerr << u << " detached" << '\n';
+                zusmt::rerr() << u << " detached" << '\n';
                 throw InternalException("Unexpected situation in rule application");
             }
     }
@@ -470,7 +471,7 @@ void ProofGraph::applyRuleB3( RuleContext& ra )
         for(unsigned u = 0; u < getGraphSize(); u++)
             if(getNode(u) != NULL && !isRoot(getNode(u)) && getNode(u)->getNumResolvents() == 0)
             {
-                std::cerr << u << " detached" << '\n';
+                zusmt::rerr() << u << " detached" << '\n';
                 throw InternalException("Unexpected situation in rule application");
             }
     }

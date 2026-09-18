@@ -1,3 +1,4 @@
+#include <r_compat.h>
 //
 // Created by prova on 07.02.19.
 //
@@ -35,12 +36,12 @@ protected:
         virtual ~LANode() = default;
         virtual void print_local() const {
             for (int i = 0; i < d; i++)
-                dprintf(STDERR_FILENO, " ");
-            dprintf(STDERR_FILENO, "%s%d [%d]", sign(l) ? "-" : "", var(l), d);
+                REprintf(" ");
+            REprintf("%s%d [%d]", sign(l) ? "-" : "", var(l), d);
 
-            if (c1 != nullptr) { dprintf(STDERR_FILENO, " c1"); }
-            if (c2 != nullptr) { dprintf(STDERR_FILENO, " c2"); }
-            dprintf(STDERR_FILENO, "\n");
+            if (c1 != nullptr) { REprintf(" c1"); }
+            if (c2 != nullptr) { REprintf(" c2"); }
+            REprintf("\n");
         }
 
         void print() const {

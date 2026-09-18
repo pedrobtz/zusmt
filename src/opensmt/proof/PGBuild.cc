@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -78,7 +79,7 @@ ProofNode * ProofGraph::createProofNodeFor(CRef clause, clause_type _ctype, Reso
 }
 
 void ProofGraph::buildProofGraph(const ResolutionProof & proof) {
-    if (verbose()) { std::cerr << "# " << "Proof graph building begin" << '\n'; }
+    if (verbose()) { zusmt::rerr() << "# " << "Proof graph building begin" << '\n'; }
     if (verbose() > 0) {
         uint64_t mem_used = memUsed();
         reportf("# Memory used before building the proof: %.3f MB\n", mem_used == 0 ? 0 : mem_used / 1048576.0);
@@ -313,7 +314,7 @@ void ProofGraph::buildProofGraph(const ResolutionProof & proof) {
         uint64_t mem_used = memUsed();
         reportf("; Memory used after building the proof: %.3f MB\n", mem_used == 0 ? 0 : mem_used / 1048576.0);
     }
-    if (verbose()) { std::cerr << "; Proof graph building end" << std::endl; }
+    if (verbose()) { zusmt::rerr() << "; Proof graph building end" << std::endl; }
     building_time = cpuTime() - initTime;
 
     // Postprocessing of the proof

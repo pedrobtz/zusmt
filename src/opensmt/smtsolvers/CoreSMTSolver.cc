@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -399,9 +400,9 @@ void CoreSMTSolver::cancelUntil(int level)
 
 void CoreSMTSolver::printClause(Clause & cl) {
     for (unsigned i = 0; i < cl.size(); ++i) {
-        std::cout << cl[i] << ' ';
+        zusmt::rout() << cl[i] << ' ';
     }
-    std::cout << '\n';
+    zusmt::rout() << '\n';
 }
 
 void CoreSMTSolver::printClause(CRef cref) {
@@ -814,8 +815,8 @@ void CoreSMTSolver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
     }
     cleanup.clear();
 //    for (int i = 0; i < out_learnt.size(); i++)
-//        printf("%d ", out_learnt[i]);
-//    printf("\n");
+//        Rprintf("%d ", out_learnt[i]);
+//    Rprintf("\n");
 }
 
 
@@ -1359,7 +1360,7 @@ void CoreSMTSolver::learntSizeAdjust() {
         max_learnts *= learntsize_inc;
 
         if (verbosity >= 1)
-            fprintf(stderr, ";| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n",
+            REprintf(";| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n",
                     (int) conflicts,
                     (int) dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(),
                     (int) clauses_literals,
@@ -1441,7 +1442,7 @@ lbool CoreSMTSolver::search(int nof_conflicts)
             // CONFLICT
             if (verbosity and conflicts % 1000 == 999) {
                 uint64_t units = trail_lim.size() == 0 ?  trail.size() :  trail_lim[0];
-                std::cout << "; conflicts: " << std::setw(5) << std::round(conflicts/1000.0) << "k"
+                zusmt::rout() << "; conflicts: " << std::setw(5) << std::round(conflicts/1000.0) << "k"
                     << " learnts: " << std::setw(5) << std::round(learnts.size()/1000.0) << "k"
                     << " clauses: " << std::setw(5) << std::round(clauses.size()/1000.0) << "k"
                     << " units: " << std::setw(5) << units
@@ -1699,10 +1700,10 @@ lbool CoreSMTSolver::solve_()
 
     if (verbosity >= 1)
     {
-        fprintf(stderr, "; ============================[ Search Statistics ]==============================\n");
-        fprintf(stderr, "; | Conflicts |          ORIGINAL         |          LEARNT          | Progress |\n");
-        fprintf(stderr, "; |           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
-        fprintf(stderr, "; ===============================================================================\n");
+        REprintf("; ============================[ Search Statistics ]==============================\n");
+        REprintf("; | Conflicts |          ORIGINAL         |          LEARNT          | Progress |\n");
+        REprintf("; |           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
+        REprintf("; ===============================================================================\n");
     }
     double next_printout = restart_first;
 
@@ -1718,7 +1719,7 @@ lbool CoreSMTSolver::solve_()
             if (config.verbosity() > 0) {
                 reportf("; %9d | %8d %8d | %8.3f s | %6.3f MB\n", (int) conflicts, (int) learnts.size(), nLearnts(),
                         cpuTime(), memUsed() / 1048576.0);
-                fflush(stderr);
+                /* fflush(stderr) dropped: output goes through REprintf */
             }
         }
 
@@ -1774,7 +1775,7 @@ void CoreSMTSolver::relocAll(ClauseAllocator& to)
         for (int s = 0; s < 2; s++)
         {
             Lit p = mkLit(v, s);
-            // printf(" >>> RELOCING: %s%d\n", sign(p) ? "-" : "", var(p)+1);
+            // Rprintf(" >>> RELOCING: %s%d\n", sign(p) ? "-" : "", var(p)+1);
             vec<Watcher>& ws = watches[p];
             for (int j = 0; j < ws.size(); j++)
                 ca.reloc(ws[j].cref, to);
@@ -1810,7 +1811,7 @@ void CoreSMTSolver::garbageCollect()
 
     relocAll(to);
 //    if (verbosity >= 2)
-//        fprintf(stderr, "; |  Garbage collection:   %12d bytes => %12d bytes             |\n",
+//        REprintf("; |  Garbage collection:   %12d bytes => %12d bytes             |\n",
 //               ca.size()*ClauseAllocator::Unit_Size, to.size()*ClauseAllocator::Unit_Size);
     to.moveTo(ca);
 }

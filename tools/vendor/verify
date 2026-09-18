@@ -22,7 +22,9 @@ present=$(mktemp)
 trap 'rm -f "${recorded}" "${present}"' EXIT
 
 awk '{ sub(/^\*/, "", $2); print $2 }' tools/vendor/checksums.sha256 | LC_ALL=C sort > "${recorded}"
-find src/opensmt -type f | LC_ALL=C sort > "${present}"
+# Same exclusions as tools/vendor.sh: R compiles in place, so a built tree
+# carries .o files that are not part of the import.
+find src/opensmt -type f ! -name '*.o' ! -name '*.so' ! -name '*.dll' ! -name '*.dylib' ! -name '*.a' | LC_ALL=C sort > "${present}"
 
 if ! diff -u "${recorded}" "${present}" > /dev/null; then
   echo "ERROR: the vendored file list does not match tools/vendor/checksums.sha256" >&2

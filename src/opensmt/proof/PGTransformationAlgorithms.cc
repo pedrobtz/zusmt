@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -136,7 +137,7 @@ void ProofGraph::recyclePivotsIter_RecyclePhase() {
 }
 
 double ProofGraph::recyclePivotsIter() {
-    if (verbose() > 1) { std::cerr << "; Recycle pivots plus restructuring begin" << std::endl; }
+    if (verbose() > 1) { zusmt::rerr() << "; Recycle pivots plus restructuring begin" << std::endl; }
     if (verbose() > 1) {
         uint64_t mem_used = memUsed();
         reportf("; Memory used before recycling: %.3f MB\n", mem_used == 0 ? 0 : mem_used / 1048576.0);
@@ -145,7 +146,7 @@ double ProofGraph::recyclePivotsIter() {
 
     recyclePivotsIter_RecyclePhase();
 
-    if (verbose() > 1) { std::cerr << "; Recycling end, restructuring begin" << std::endl; }
+    if (verbose() > 1) { zusmt::rerr() << "; Recycling end, restructuring begin" << std::endl; }
     if (verbose() > 1) {
         uint64_t mem_used = memUsed();
         reportf("; Memory used after recycling, before restructuring: %.3f MB\n",
@@ -281,7 +282,7 @@ double ProofGraph::recyclePivotsIter() {
 
     if (proofCheck()) {
         unsigned rem = cleanProofGraph();
-        if (rem > 0) std::cerr << "; Cleaned " << rem << " residual nodes" << std::endl;
+        if (rem > 0) zusmt::rerr() << "; Cleaned " << rem << " residual nodes" << std::endl;
         checkProof(true);
     }
 
@@ -303,12 +304,12 @@ double ProofGraph::recyclePivotsIter() {
                 new_n_edges += pn->getNumResolvents();
             }
         }
-        std::cerr << "# RPI\t";
-        std::cerr << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes)
+        zusmt::rerr() << "# RPI\t";
+        zusmt::rerr() << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes)
                   << "%)\t";
-        std::cerr << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges)
+        zusmt::rerr() << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges)
                   << "%)\t";
-        std::cerr << "Time: " << (endTime - initTime) << " s" << std::endl;
+        zusmt::rerr() << "Time: " << (endTime - initTime) << " s" << std::endl;
     }
     //////////////////////////////////////////////////////////////////
 
@@ -317,7 +318,7 @@ double ProofGraph::recyclePivotsIter() {
 
 void ProofGraph::recycleUnits() {
     assert(mpz_cmp_ui(visited_1, 0) == 0 and mpz_cmp_ui(visited_2, 0) == 0);
-    if (verbose() > 1) { std::cerr << "# " << "Recycle units begin" << '\n'; }
+    if (verbose() > 1) { zusmt::rerr() << "# " << "Recycle units begin" << '\n'; }
     if (verbose() > 1) {
         uint64_t mem_used = memUsed();
         reportf("# Memory used before recycling: %.3f MB\n", mem_used == 0 ? 0 : mem_used / 1048576.0);
@@ -499,7 +500,7 @@ void ProofGraph::recycleUnits() {
 
     if (proofCheck()) {
         unsigned rem = cleanProofGraph();
-        if (rem > 0) std::cerr << "# Cleaned " << rem << " residual nodes" << '\n';
+        if (rem > 0) zusmt::rerr() << "# Cleaned " << rem << " residual nodes" << '\n';
         assert(rem == 0);
         checkProof(true);
     }
@@ -522,11 +523,11 @@ void ProofGraph::recycleUnits() {
             }
         }
 
-        std::cerr << "# LU\t";
-        std::cerr << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes) << "%)\t";
-        std::cerr << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges) << "%)\t";
-        std::cerr << "Traversals: " << curr_num_loops << "\t";
-        std::cerr << "Time: " << (endTime - initTime) << " s" << '\n';
+        zusmt::rerr() << "# LU\t";
+        zusmt::rerr() << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes) << "%)\t";
+        zusmt::rerr() << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges) << "%)\t";
+        zusmt::rerr() << "Traversals: " << curr_num_loops << "\t";
+        zusmt::rerr() << "Time: " << (endTime - initTime) << " s" << '\n';
     }
     //////////////////////////////////////////////////////////////////
 }
@@ -535,7 +536,7 @@ void ProofGraph::recycleUnits() {
 void ProofGraph::proofTransformAndRestructure(const double left_time, const int max_num_loops, bool do_transf,
         std::function<ApplicationResult(RuleContext&,RuleContext&)> handleRules)
 {
-    if (verbose() > 1) { std::cerr << "; " << "Proof transformation traversals begin" << std::endl; }
+    if (verbose() > 1) { zusmt::rerr() << "; " << "Proof transformation traversals begin" << std::endl; }
     if (verbose() > 1) {
         uint64_t mem_used = memUsed();
         reportf("; Memory used before proof transformation traversals: %.3f MB\n",
@@ -710,16 +711,16 @@ void ProofGraph::proofTransformAndRestructure(const double left_time, const int 
         curr_num_loops++;
 
         if (proofCheck() > 1) {
-            std::cerr << "; Checking proof after loop " << curr_num_loops << std::endl;
+            zusmt::rerr() << "; Checking proof after loop " << curr_num_loops << std::endl;
             unsigned rem = cleanProofGraph();
-            if (rem > 0) std::cerr << "; Cleaned " << rem << " residual nodes" << std::endl;
+            if (rem > 0) zusmt::rerr() << "; Cleaned " << rem << " residual nodes" << std::endl;
             checkProof(true);
         }
     }
 
     if (proofCheck()) {
         unsigned rem = cleanProofGraph();
-        if (rem > 0) std::cerr << "; Cleaned " << rem << " residual nodes" << std::endl;
+        if (rem > 0) zusmt::rerr() << "; Cleaned " << rem << " residual nodes" << std::endl;
         //assert( rem == 0 );
         checkProof(true);
     }
@@ -743,30 +744,30 @@ void ProofGraph::proofTransformAndRestructure(const double left_time, const int 
             }
         }
 
-        std::cerr << "; RE\t";
+        zusmt::rerr() << "; RE\t";
         if (num_nodes >= static_cast<int>(new_n_nodes)) {
-            std::cerr << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes)
+            zusmt::rerr() << "Nodes: " << new_n_nodes << "(-" << 100 * ((double) (num_nodes - new_n_nodes) / num_nodes)
                       << "%)\t";
         } else {
-            std::cerr << "Nodes: " << new_n_nodes << "(+" << 100 * ((double) (new_n_nodes - num_nodes) / num_nodes)
+            zusmt::rerr() << "Nodes: " << new_n_nodes << "(+" << 100 * ((double) (new_n_nodes - num_nodes) / num_nodes)
                       << "%)\t";
         }
         if (num_edges >= static_cast<int>(new_n_edges)) {
-            std::cerr << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges)
+            zusmt::rerr() << "Edges: " << new_n_edges << "(-" << 100 * ((double) (num_edges - new_n_edges) / num_edges)
                       << "%)\t";
         } else {
-            std::cerr << "Edges: " << new_n_edges << "(+" << 100 * ((double) (new_n_edges - num_edges) / num_edges)
+            zusmt::rerr() << "Edges: " << new_n_edges << "(+" << 100 * ((double) (new_n_edges - num_edges) / num_edges)
                       << "%)\t";
         }
-        std::cerr << "Traversals: " << curr_num_loops << "\t";
-        std::cerr << "Time: " << (endTime - init_time) << " s" << std::endl;
+        zusmt::rerr() << "Traversals: " << curr_num_loops << "\t";
+        zusmt::rerr() << "Time: " << (endTime - init_time) << " s" << std::endl;
     }
     ///////////////////////////////////////////////////////////////////////////////
 }
 
 void ProofGraph::proofPostStructuralHashing()
 {
-	if ( verbose() > 1 ) std::cerr << "; Post-processing structural hashing begin" << std::endl;
+	if ( verbose() > 1 ) zusmt::rerr() << "; Post-processing structural hashing begin" << std::endl;
 	if ( verbose() > 1 )
 	{
 		uint64_t mem_used = memUsed();
@@ -847,7 +848,7 @@ void ProofGraph::proofPostStructuralHashing()
 	if( proofCheck() )
 	{
 		unsigned rem = cleanProofGraph( );
-		if(rem > 0 ) std::cerr << "; Cleaned " << rem << " residual nodes" << std::endl;
+		if(rem > 0 ) zusmt::rerr() << "; Cleaned " << rem << " residual nodes" << std::endl;
 		//assert( rem == 0 );
 		checkProof( true );
 	}
@@ -871,10 +872,10 @@ void ProofGraph::proofPostStructuralHashing()
 			if(pn != NULL){ new_n_nodes++; new_n_edges += pn->getNumResolvents(); }
 		}
 
-		std::cerr << "; SH\t";
-        std::cerr << "Nodes: " << new_n_nodes << "(-" << 100*((double)(num_nodes - new_n_nodes)/num_nodes) << "%)\t";
-        std::cerr << "Edges: " << new_n_edges << "(-" << 100*((double)(num_edges - new_n_edges)/num_edges) << "%)\t";
-        std::cerr << "Time: " << (endTime-initTime) << " s" << std::endl;
+		zusmt::rerr() << "; SH\t";
+        zusmt::rerr() << "Nodes: " << new_n_nodes << "(-" << 100*((double)(num_nodes - new_n_nodes)/num_nodes) << "%)\t";
+        zusmt::rerr() << "Edges: " << new_n_edges << "(-" << 100*((double)(num_edges - new_n_edges)/num_edges) << "%)\t";
+        zusmt::rerr() << "Time: " << (endTime-initTime) << " s" << std::endl;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 }

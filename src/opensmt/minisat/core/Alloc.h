@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*****************************************************************************************[Alloc.h]
 Copyright (c) 2008-2010, Niklas Sorensson
 
@@ -110,7 +111,7 @@ void RegionAllocator<T>::capacity(uint32_t min_cap)
         if (cap <= prev_cap)
             throw OutOfMemoryException();
     }
-    // printf(" .. (%p) cap = %u\n", this, cap);
+    // Rprintf(" .. (%p) cap = %u\n", this, cap);
 
     assert(cap > 0);
     memory = (T*)xrealloc(memory, sizeof(T)*cap);
@@ -121,7 +122,7 @@ template<class T>
 typename RegionAllocator<T>::Ref
 RegionAllocator<T>::alloc(int size)
 {
-    // printf("ALLOC called (this = %p, size = %d)\n", this, size); fflush(stdout);
+    // Rprintf("ALLOC called (this = %p, size = %d)\n", this, size); fflush(stdout);
     assert(size > 0);
     capacity(sz + size);
 

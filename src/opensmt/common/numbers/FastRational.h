@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
 Fast rationals
 David Monniaux, VERIMAG 2008-2009
@@ -87,8 +88,7 @@ class FastRational
     mutable mpq_ptr mpq{nullptr};
 
     inline static mpqPool pool;
-    inline static thread_local mpz_class temp;
-    inline static mpz_ptr mpz() { return temp.get_mpz_t(); }
+    inline static mpz_ptr mpz() { static thread_local mpz_class temp; return temp.get_mpz_t(); }
 
 
     // Bit masks for questioning state:
@@ -252,8 +252,7 @@ public:
 
     mpq_class getMpq() const {
         if (wordPartValid()) {
-            static_assert(sizeof(long) == 8);
-            return mpq_class{static_cast<long>(num), static_cast<long>(den)};
+            return mpq_class{static_cast<long>(num), static_cast<unsigned long>(den)};
         }
         assert(mpqPartValid());
         return mpq_class{mpq};
@@ -595,7 +594,7 @@ template<uword> uword gcd(uword a, uword b);
     } while (0)                                \
 
 #define CHECK_POSITIVE(value) \
-    if (value < 1) abort()
+    if (value < 1) zusmt::fatal("bundled solver: non-positive value where positive required")
 #define CHECK_UWORD(var, value) \
     do { \
         CHECK_POSITIVE(value); \

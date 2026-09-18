@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Roberto Bruttomesso <roberto.bruttomesso@gmail.com>
 
@@ -29,7 +30,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <logics/Logic.h>
 #include <common/InternalException.h>
 
-#include <sys/wait.h>
 
 namespace opensmt {
 
@@ -350,7 +350,7 @@ UFInterpolator::getInterpolant(const ipartitions_t & mask, ItpColorMap * labels,
     } else {
         throw InternalException("Error in UFInterpolator::getInterpolant! No labels passed");
     }
-    srand(2);
+    zusmt::pseudo_srand(2);
     colorCGraph();
 
     // Traverse the graph, look for edges of "color" to summarize
@@ -372,7 +372,7 @@ UFInterpolator::getInterpolant(const ipartitions_t & mask, ItpColorMap * labels,
         else if (usingWeak())
             result = logic.mkNot(ISwap(pi));
         else if (usingRandom())
-            result = (rand() % 2) ? Iprime(pi) : logic.mkNot(ISwap(pi));
+            result = (zusmt::pseudo_rand() % 2) ? Iprime(pi) : logic.mkNot(ISwap(pi));
     }
         // Much simpler case when conflict belongs to B
     else if (conf_color == icolor_t::I_B) {
@@ -381,7 +381,7 @@ UFInterpolator::getInterpolant(const ipartitions_t & mask, ItpColorMap * labels,
         else if (usingWeak())
             result = logic.mkNot(IprimeSwap(pi));
         else if (usingRandom())
-            result = (rand() % 2) ? I(pi) : logic.mkNot(IprimeSwap(pi));
+            result = (zusmt::pseudo_rand() % 2) ? I(pi) : logic.mkNot(IprimeSwap(pi));
     } else {
         throw InternalException("something went wrong");
     }
@@ -707,7 +707,7 @@ UFInterpolator::Irec(const path_t & p, std::map<path_t, PTRef> & cache) {
                 else rab = true;
 
                 assert (not ((la and rb) or (lb and ra)));
-                bool b = true;//rand() % 2;
+                bool b = true;//zusmt::pseudo_rand() % 2;
 
                 if (la or ra) { // conflict in A, call I' or not S
                     assert (i == 0 or j == (factors.size() - 1));
@@ -826,7 +826,7 @@ UFInterpolator::IrecSwap(const path_t & p, std::map<path_t, PTRef> & cache) {
                 else rab = true;
 
                 assert (not ((la and rb) or (lb and ra)));
-                bool b = true;//rand() % 2;
+                bool b = true;//zusmt::pseudo_rand() % 2;
 
                 if (la or ra) {
                     assert (i == 0 or j == (factors.size() - 1));
@@ -1021,7 +1021,7 @@ icolor_t UFInterpolator::resolveABColor() const {
     } else if (usingWeak()) {
         return icolor_t::I_A;
     } else if (usingRandom()) {
-        return (rand() % 2) ? icolor_t::I_A : icolor_t::I_B;
+        return (zusmt::pseudo_rand() % 2) ? icolor_t::I_A : icolor_t::I_B;
     } else {
         assert(false);
         return icolor_t::I_B;
@@ -1122,7 +1122,7 @@ UFInterpolator::labelFactors(std::vector<path_t> & factors) {
     // Random
     else if (usingRandom()) {
         for (const auto & factor : factors) {
-            if (rand() % 2) {
+            if (zusmt::pseudo_rand() % 2) {
                 L[factor] = icolor_t::I_B;
             } else {
                 L[factor] = icolor_t::I_A;

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -18,7 +19,7 @@ void ProofGraph::printProofGraph( )
 	// Fill proof
 	fillProofGraph();
 	//Print original proof
-	if( verbose() > 0 ) std::cerr << "# Outputting dotty proof" << '\n';
+	if( verbose() > 0 ) zusmt::rerr() << "# Outputting dotty proof" << '\n';
 	std::ofstream dotty( "proof.dot", std::ofstream::out | std::ofstream::trunc);
 	printProofAsDotty( dotty );
 	emptyProofGraph();
@@ -27,7 +28,7 @@ void ProofGraph::printProofGraph( )
 void ProofGraph::transfProofForReduction( )
 {
 	// Initialize C-random number generator with fixed seed to ensure reproducibility
-	srand(config.getRandomSeed());
+	zusmt::pseudo_srand(config.getRandomSeed());
 	// Fill proof
 	fillProofGraph();
 
@@ -69,7 +70,7 @@ void ProofGraph::transfProofForReduction( )
 	{
 		checkProof( true );
 		unsigned rem = cleanProofGraph( );
-		if(verbose() > 0) std::cerr << "# Cleaned " << rem << " residual nodes"  << '\n';
+		if(verbose() > 0) zusmt::rerr() << "# Cleaned " << rem << " residual nodes"  << '\n';
 		if(rem > 0) checkProof( true );
 	}
 
@@ -80,61 +81,61 @@ void ProofGraph::transfProofForReduction( )
 		double perc_nodes=(((double)num_nodes-(double)numnodes)/(double)numnodes)*100;
 		double perc_edges=(((double)num_edges-(double)numedges)/(double)numedges)*100;
 		double perc_leaves=(((double)num_leaves-(double)numleaves)/(double)numleaves)*100;
-		std::cerr << "#" << '\n';
-		std::cerr << "# ------------------------------------" << '\n';
-		std::cerr << "# PROOF GRAPH REDUCTION STATISTICS    " << '\n';
-		std::cerr << "# ------------------------------------" << '\n';
-		std::cerr << "# Structural properties" << '\n';
-		std::cerr << "# ---------------------" << '\n';
-		std::cerr << "# Actual num proof variables.: ";
-		fprintf( stderr, "%-10d %-10d\n", numvars, (int)proof_variables.size() );
-		std::cerr << "# Nodes......................: ";
-		fprintf( stderr, "%-10d %-10d\n", numnodes, num_nodes );
-		std::cerr << "# Nodes variation............: ";
-		fprintf( stderr, "%-9.2f %%\n", perc_nodes );
-		std::cerr << "# Leaves.....................: ";
-		fprintf( stderr, "%-10d %-10d\n", numleaves, num_leaves );
-		std::cerr << "# Leaves variation...........: ";
-		fprintf( stderr, "%-9.2f %%\n", perc_leaves );
-		std::cerr << "# Edges......................: ";
-		fprintf( stderr, "%-10d %-10d\n", numedges, num_edges );
-		std::cerr << "# Edges variation............: ";
-		fprintf( stderr, "%-9.2f %%\n", perc_edges );
-		//std::cerr << "# Graph vector size..........: ";
-		//fprintf( stderr, "%-10ld %-10ld\n", size, graph.size( ) );
-		std::cerr << "# Average degree.............: ";
-		fprintf( stderr, "%-10.2f %-10.2f\n", avgdeg, (double)num_edges / (double)num_nodes );
-		std::cerr << "# Unary clauses..............: ";
-		fprintf( stderr, "%-10d %-10d\n", numunary, num_unary );
-		std::cerr << "# Max clause size............: ";
-		fprintf( stderr, "%-10d %-10d\n", maxclasize, max_cla_size );
-		std::cerr << "# Average clause size........: ";
-		fprintf( stderr, "%-10.2f %-10.2f\n", avgclasize, av_cla_size );
-		//std::cerr << "# Variance clause size.......: ";
-		//fprintf( stderr, "%-10.2f %-10.2f\n", varclasize, var_cla_size );
-		std::cerr << "# -------------------------" << '\n';
-		std::cerr << "# Transformation statistics" << '\n';
-		std::cerr << "# -------------------------" << '\n';
-		std::cerr << "# Graph building time........: " << building_time << " s" << '\n';
-		std::cerr << "# Transformation time........: " << time << " s" << '\n';
-		//std::cerr << "# Duplications...............: " << num_dup << '\n';
-		//std::cerr << "# Node additions due to A1...: " << num_node_add_A1 << '\n';
-		std::cerr << "# ---------------------------" << '\n';
-		std::cerr << "# Rules application statistics" << '\n';
-		std::cerr << "# ---------------------------" << '\n';
-		std::cerr << "# A1.........................: " << A1 << '\n';
-		std::cerr << "# A1'........................: " << A1prime << '\n';
-		std::cerr << "# A1 to B....................: " << A1B << '\n';
-		std::cerr << "# A2.........................: " << A2 << '\n';
-		std::cerr << "# A2 to B....................: " << A2B << '\n';
-		std::cerr << "# A2 unary...................: " << A2U << '\n';
-		std::cerr << "# B1.........................: " << B1 << '\n';
-		std::cerr << "# B2'........................: " << B2prime << '\n';
-		std::cerr << "# B2.........................: " << B2 << '\n';
-		std::cerr << "# B3.........................: " << B3 << '\n';
-		std::cerr << "# Duplications...............: " << duplications << '\n';
-		std::cerr << "# Swap ties..................: " << swap_ties << '\n';
-		std::cerr << "# ---------------------------" << '\n';
+		zusmt::rerr() << "#" << '\n';
+		zusmt::rerr() << "# ------------------------------------" << '\n';
+		zusmt::rerr() << "# PROOF GRAPH REDUCTION STATISTICS    " << '\n';
+		zusmt::rerr() << "# ------------------------------------" << '\n';
+		zusmt::rerr() << "# Structural properties" << '\n';
+		zusmt::rerr() << "# ---------------------" << '\n';
+		zusmt::rerr() << "# Actual num proof variables.: ";
+		REprintf("%-10d %-10d\n", numvars, (int)proof_variables.size() );
+		zusmt::rerr() << "# Nodes......................: ";
+		REprintf("%-10d %-10d\n", numnodes, num_nodes );
+		zusmt::rerr() << "# Nodes variation............: ";
+		REprintf("%-9.2f %%\n", perc_nodes );
+		zusmt::rerr() << "# Leaves.....................: ";
+		REprintf("%-10d %-10d\n", numleaves, num_leaves );
+		zusmt::rerr() << "# Leaves variation...........: ";
+		REprintf("%-9.2f %%\n", perc_leaves );
+		zusmt::rerr() << "# Edges......................: ";
+		REprintf("%-10d %-10d\n", numedges, num_edges );
+		zusmt::rerr() << "# Edges variation............: ";
+		REprintf("%-9.2f %%\n", perc_edges );
+		//zusmt::rerr() << "# Graph vector size..........: ";
+		//REprintf("%-10ld %-10ld\n", size, graph.size( ) );
+		zusmt::rerr() << "# Average degree.............: ";
+		REprintf("%-10.2f %-10.2f\n", avgdeg, (double)num_edges / (double)num_nodes );
+		zusmt::rerr() << "# Unary clauses..............: ";
+		REprintf("%-10d %-10d\n", numunary, num_unary );
+		zusmt::rerr() << "# Max clause size............: ";
+		REprintf("%-10d %-10d\n", maxclasize, max_cla_size );
+		zusmt::rerr() << "# Average clause size........: ";
+		REprintf("%-10.2f %-10.2f\n", avgclasize, av_cla_size );
+		//zusmt::rerr() << "# Variance clause size.......: ";
+		//REprintf("%-10.2f %-10.2f\n", varclasize, var_cla_size );
+		zusmt::rerr() << "# -------------------------" << '\n';
+		zusmt::rerr() << "# Transformation statistics" << '\n';
+		zusmt::rerr() << "# -------------------------" << '\n';
+		zusmt::rerr() << "# Graph building time........: " << building_time << " s" << '\n';
+		zusmt::rerr() << "# Transformation time........: " << time << " s" << '\n';
+		//zusmt::rerr() << "# Duplications...............: " << num_dup << '\n';
+		//zusmt::rerr() << "# Node additions due to A1...: " << num_node_add_A1 << '\n';
+		zusmt::rerr() << "# ---------------------------" << '\n';
+		zusmt::rerr() << "# Rules application statistics" << '\n';
+		zusmt::rerr() << "# ---------------------------" << '\n';
+		zusmt::rerr() << "# A1.........................: " << A1 << '\n';
+		zusmt::rerr() << "# A1'........................: " << A1prime << '\n';
+		zusmt::rerr() << "# A1 to B....................: " << A1B << '\n';
+		zusmt::rerr() << "# A2.........................: " << A2 << '\n';
+		zusmt::rerr() << "# A2 to B....................: " << A2B << '\n';
+		zusmt::rerr() << "# A2 unary...................: " << A2U << '\n';
+		zusmt::rerr() << "# B1.........................: " << B1 << '\n';
+		zusmt::rerr() << "# B2'........................: " << B2prime << '\n';
+		zusmt::rerr() << "# B2.........................: " << B2 << '\n';
+		zusmt::rerr() << "# B3.........................: " << B3 << '\n';
+		zusmt::rerr() << "# Duplications...............: " << duplications << '\n';
+		zusmt::rerr() << "# Swap ties..................: " << swap_ties << '\n';
+		zusmt::rerr() << "# ---------------------------" << '\n';
 	}
 
 	/*	if ( verbose() > 0 )
@@ -146,7 +147,7 @@ void ProofGraph::transfProofForReduction( )
 	if( printProofDotty() == 1 )
 	{
 		//Print reduced proof
-		if( verbose() > 0 ) std::cerr << "# Outputting dotty proof reduced" << '\n';
+		if( verbose() > 0 ) zusmt::rerr() << "# Outputting dotty proof reduced" << '\n';
         std::ofstream dottyred( "proof_reduced.dot" );
 		printProofAsDotty( dottyred );
 	}
@@ -158,7 +159,7 @@ void ProofGraph::transfProofForReduction( )
 }
 
 void ProofGraph::transfProofForCNFInterpolants(std::function<icolor_t(Var)> getVarClass) {
-    if (verbose() > 0) std::cerr << "; Proof transformation for interpolants (partially) in CNF" << '\n';
+    if (verbose() > 0) zusmt::rerr() << "; Proof transformation for interpolants (partially) in CNF" << '\n';
 
     fillProofGraph();
     proofTransformAndRestructure(-1, -1, true, [this, &getVarClass](RuleContext & ra1, RuleContext & ra2) {
@@ -213,26 +214,26 @@ double ProofGraph::doReduction(double solving_time) {
     //Each global loop is given an equal fraction of available time
     num_global_reduction_loops = reductionLoops();
     if (verbose() > 0) {
-        std::cerr << "# Compressing proof, " << num_global_reduction_loops << " global iteration(s) " << '\n';
-        if (enabledPushDownUnits()) std::cerr << "# preceded by LowerUnits" << '\n';
-        std::cerr << "# Each global iteration consists of: " << '\n';
-        if (enabledStructuralHashing()) std::cerr << "# StructuralHashing" << '\n';
-        if (enabledRecyclePivots()) std::cerr << "# RecyclePivotsWithIntersection" << '\n';
+        zusmt::rerr() << "# Compressing proof, " << num_global_reduction_loops << " global iteration(s) " << '\n';
+        if (enabledPushDownUnits()) zusmt::rerr() << "# preceded by LowerUnits" << '\n';
+        zusmt::rerr() << "# Each global iteration consists of: " << '\n';
+        if (enabledStructuralHashing()) zusmt::rerr() << "# StructuralHashing" << '\n';
+        if (enabledRecyclePivots()) zusmt::rerr() << "# RecyclePivotsWithIntersection" << '\n';
         if (enabledTransfTraversals()) {
-            std::cerr << "# ReduceAndExpose ";
+            zusmt::rerr() << "# ReduceAndExpose ";
             if (ratioReductionSolvingTime() > 0 || reductionTime() > 0)
-                std::cerr << "with overall timeout " << red_time << " sec(s) " << '\n';
+                zusmt::rerr() << "with overall timeout " << red_time << " sec(s) " << '\n';
             else if (numGraphTraversals() > 0)
-                std::cerr << "with " << numGraphTraversals() << " graph traversal(s) " << '\n';
+                zusmt::rerr() << "with " << numGraphTraversals() << " graph traversal(s) " << '\n';
         }
-        std::cerr << "#" << '\n';
+        zusmt::rerr() << "#" << '\n';
     }
     double spent_time = 0, i_time = 0;
 
     time_init = cpuTime();
     if (enabledPushDownUnits()) recycleUnits();
     for (int k = 1; k <= num_global_reduction_loops; k++) {
-        if (verbose() > 0) std::cerr << "# Global iteration " << k << '\n';
+        if (verbose() > 0) zusmt::rerr() << "# Global iteration " << k << '\n';
         i_time = cpuTime();
         if (switchToRPHashing()) {
             if (enabledRecyclePivots()) recyclePivotsIter();
