@@ -1,6 +1,8 @@
 # Changelog
 
-## zusmt 0.0.0.9000
+## zusmt 0.1.0
+
+- First release.
 
 - Documentation: a README and a
   [`vignette("zusmt")`](https://pedrobtz.github.io/zusmt/articles/zusmt.md)

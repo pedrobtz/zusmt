@@ -12,6 +12,8 @@ Create a solver, give it a problem in SMT-LIB2, and ask for an answer.
   : Check satisfiability
 - [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md)
   : The model of a satisfiable problem
+- [`print(`*`<zusmt_solver>`*`)`](https://pedrobtz.github.io/zusmt/reference/print.zusmt_solver.md)
+  : Print a solver
 
 ## Housekeeping
 

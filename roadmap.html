@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zusmt</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -282,15 +282,29 @@
 </ul><p>Exit: <strong>met</strong> — check clean with no notes, tarball 496K with the vignette.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-9--cran-submission">Stage 9 — CRAN submission<a class="anchor" aria-label="anchor" href="#stage-9--cran-submission"></a></h2>
+<h2 id="stage-9--cran-submission--prepared-pr-8">Stage 9 — CRAN submission — <strong>prepared</strong> (PR #8)<a class="anchor" aria-label="anchor" href="#stage-9--cran-submission--prepared-pr-8"></a></h2>
 <ul><li>
 <strong>Re-enable the <code>nosuggests</code> leg</strong> (<code>.github/workflows/R-CMD-check.yaml</code>). Off since Stage 8, and it is the leg rather than the package: CRAN builds the tarball once with Suggests present and runs the noSuggests check against it, so the vignettes are already built, whereas the r-actions job builds inside the container and dies on <code>vignette builder 'knitr' not found</code>. Waiting on <code>--no-build-vignettes</code> in that job’s <code>build_args</code>, which is currently hardcoded.</li>
 <li>Run the <code>cran-extrachecks</code> skill.</li>
 <li>
 <strong>Installed size is ~45 MB</strong>, almost all <code>libs/</code>. That is an INFO in the r-hub container and a NOTE on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the explanation belongs in <code>cran-comments.md</code> before a reviewer asks, not after.</li>
 <li>Verify: <code>SystemRequirements</code> accurate, <code>LICENSE.note</code> present, copyright holders credited, install time and tarball size acceptable, no compiler warnings on CRAN’s flavours, <code>--as-cran</code> clean including the “libs size” note.</li>
-<li>Expect a reviewer question about the bundled third-party sources; have the provenance answer ready.</li>
-</ul></div>
+<li>Expect a reviewer question about the bundled third-party sources; <code>cran-comments.md</code> answers it before it is asked — provenance, licensing, and what the patches do and why.</li>
+</ul><p>What the <code>cran-extrachecks</code> pass changed:</p>
+<ul><li>
+<strong><code>[cph]</code> was missing from the maintainer.</strong> OpenSMT’s authors carried it, the person submitting the package did not.</li>
+<li>
+<strong>The Description was two sentences and cited nothing.</strong> CRAN asks for three or four and for method references where they exist. It now cites the OpenSMT paper — verified by resolving the DOI against Crossref rather than written from memory, which is the same failure mode as the fabricated maintainer name in Stage 1.</li>
+<li>
+<strong>The README told people to install from GitHub</strong>, which is the wrong first instruction for a package on CRAN.</li>
+<li>
+<code>print.zusmt_solver</code> had <code>@export</code> and no documentation; <code>cran-comments.md</code> needed build-ignoring.</li>
+</ul><p><strong>Still open before an actual submission</strong>, and neither is fixable from this repository:</p>
+<ol style="list-style-type: decimal"><li>
+<code>sanitizers</code> — parked on <code>r-actions</code> setting <code>CXX17</code>/<code>CXX20</code> and their <code>*FLAGS</code>. Worth resolving before submitting: UBSan is the check most likely to find what valgrind and rchk do not, on a package that has already shipped one memory bug.</li>
+<li>
+<code>nosuggests</code> — parked on <code>--no-build-vignettes</code> in that job’s <code>build_args</code>. CRAN runs this flavour itself, so the submission is checked against it whether or not our CI is.</li>
+</ol></div>
 <div class="section level2">
 <h2 id="standing-concerns">Standing concerns<a class="anchor" aria-label="anchor" href="#standing-concerns"></a></h2>
 <ul><li>

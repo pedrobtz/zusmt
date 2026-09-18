@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Bindings to the OpenSMT Satisfiability Modulo Theories Solver • zusmt</title>
+<title>Satisfiability Modulo Theories Solving with OpenSMT • zusmt</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bindings to the OpenSMT Satisfiability Modulo Theories Solver">
-<meta name="description" content="Bundles the OpenSMT satisfiability modulo theories (SMT) solver &lt;https://github.com/usi-verification-and-security/opensmt&gt; and exposes it to R, so that solving does not require a separately installed solver binary.">
-<meta property="og:description" content="Bundles the OpenSMT satisfiability modulo theories (SMT) solver &lt;https://github.com/usi-verification-and-security/opensmt&gt; and exposes it to R, so that solving does not require a separately installed solver binary.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Satisfiability Modulo Theories Solving with OpenSMT">
+<meta name="description" content="Solve satisfiability modulo theories (SMT) problems using the bundled OpenSMT solver, described in Hyvaerinen, Marescotti, Alt and Sharygina (2016) &lt;doi:10.1007/978-3-319-40970-2_35&gt;. Problems are written in the SMT-LIB standard language and answers come back as R values, with model values carrying the solver's exact rational alongside the double. Supported theories include uninterpreted functions, linear integer and real arithmetic and their combinations, difference logic, and arrays. The solver is compiled into the package, so no separately installed solver binary is required.">
+<meta property="og:description" content="Solve satisfiability modulo theories (SMT) problems using the bundled OpenSMT solver, described in Hyvaerinen, Marescotti, Alt and Sharygina (2016) &lt;doi:10.1007/978-3-319-40970-2_35&gt;. Problems are written in the SMT-LIB standard language and answers come back as R values, with model values carrying the solver's exact rational alongside the double. Supported theories include uninterpreted functions, linear integer and real arithmetic and their combinations, difference logic, and arrays. The solver is compiled into the package, so no separately installed solver binary is required.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zusmt</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,9 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"zusmt"</span><span class="op">)</span></span></code></pre></div>
+<p>Or the development version:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/zusmt"</span><span class="op">)</span></span></code></pre></div>
 <p>Building from source needs a C++20 compiler and <a href="https://gmplib.org/" class="external-link">GMP</a> with its C++ bindings (<code>libgmp-dev</code> on Debian and Ubuntu, <code>gmp-devel</code> on Fedora, <code>brew install gmp</code> on macOS; Rtools supplies it on Windows).</p>
@@ -65,7 +68,7 @@
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
 <p>Three people need distinct meeting slots between 9 and 17, Alice before Bob, and Carol two hours after Bob:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://pedrobtz.github.io/zusmt/">zusmt</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span>
@@ -92,7 +95,7 @@
 <span><span class="co">#&gt; $carol</span></span>
 <span><span class="co">#&gt; [1] 12</span></span></code></pre></div>
 <p>When a problem has no solution, you are told so rather than given a wrong answer. <code>2x = 3</code> has no integer solution:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">u</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">u</span>, <span class="st">"(declare-const x Int) (assert (= (* 2 x) 3))"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">u</span><span class="op">)</span></span>
@@ -102,7 +105,7 @@
 <h2 id="exact-values">Exact values<a class="anchor" aria-label="anchor" href="#exact-values"></a>
 </h2>
 <p>Solvers work in rationals, and not every rational is a double. Model values carry the solver’s exact answer alongside the <code>numeric</code> one, so you can compute with the double and still see what was meant:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LRA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">r</span>, <span class="st">"(declare-const third Real) (assert (= (* 3.0 third) 1.0))"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">r</span><span class="op">)</span></span>
@@ -117,7 +120,7 @@
 <div class="section level2">
 <h2 id="logics">Logics<a class="anchor" aria-label="anchor" href="#logics"></a>
 </h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/smt_logics.html">smt_logics</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "QF_UF"    "QF_LIA"   "QF_LRA"   "QF_UFLIA" "QF_UFLRA" "QF_IDL"   "QF_RDL"</span></span>
 <span><span class="co">#&gt; [8] "QF_AX"</span></span></code></pre></div>
@@ -163,7 +166,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Pedro Baltazar <br><small class="roles"> Author, maintainer </small>   </li>
+<li>Pedro Baltazar <br><small class="roles"> Author, maintainer, copyright holder </small>   </li>
 <li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>

@@ -10,6 +10,13 @@ and nothing to configure — the solver is compiled into the package.
 
 ``` r
 
+install.packages("zusmt")
+```
+
+Or the development version:
+
+``` r
+
 # install.packages("pak")
 pak::pak("pedrobtz/zusmt")
 ```
