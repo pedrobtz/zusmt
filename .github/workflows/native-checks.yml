@@ -1,0 +1,36 @@
+# Memory and undefined-behaviour checks for the compiled code.
+#
+# This package is the one that most needs them: a hand-written C++/R boundary,
+# external pointers with a finalizer, manual PROTECT/UNPROTECT, and an
+# exception firewall. A code review caught an unprotected-SEXP bug in the model
+# reader that rchk reports statically and gctorture turns from a rare crash
+# into a reliable one -- neither of which this repository was running.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: native-checks
+
+permissions: read-all
+
+jobs:
+  sanitizers:
+    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
+    with:
+      asan: true
+
+  valgrind:
+    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@v1
+    with:
+      # The suite solves a pigeonhole instance, and valgrind is ~20-50x.
+      timeout-minutes: 90
+
+  lto:
+    uses: pedrobtz/r-actions/.github/workflows/lto.yml@v1
+
+  gctorture:
+    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@v1
+
+  rchk:
+    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@v1

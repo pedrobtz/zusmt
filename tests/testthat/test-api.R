@@ -116,3 +116,31 @@ test_that("a released solver reports itself and refuses work", {
   expect_output(print(s), "released")
   expect_error(smt_check(s), "released")
 })
+
+test_that("the model reader survives a collection at every allocation", {
+  skip_on_cran()  # gctorture makes this slow
+
+  # Regression test for an unprotected-SEXP bug: model values were collected
+  # in a std::vector<SEXP>, which R's garbage collector cannot see, so each
+  # one was unprotected from the moment it was stored until the list was
+  # built. Sixty declarations put hundreds of allocations in that window.
+  #
+  # Verified to fail before the fix: under gctorture the list came back
+  # holding a CHARSXP -- "cannot have attributes on a CHARSXP" -- which is
+  # collected memory handed back as a value. Three declarations were not
+  # enough to show it, which is what makes this class of bug dangerous.
+  decls <- paste0("(declare-const v", 1:60, " Int)", collapse = " ")
+  asserts <- paste0("(assert (= v", 1:60, " ", 1:60, "))", collapse = " ")
+
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, paste(decls, asserts))
+  expect_identical(smt_check(s), "sat")
+
+  gctorture2(1)
+  on.exit(gctorture2(0), add = TRUE)
+  m <- smt_model(s)
+  gctorture2(0)
+
+  expect_identical(names(m), paste0("v", 1:60))
+  expect_equal(unname(vapply(m, as.numeric, numeric(1))), as.numeric(1:60))
+})

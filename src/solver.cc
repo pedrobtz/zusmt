@@ -43,14 +43,38 @@ struct SolverHandle {
     std::unique_ptr<RInterpret> interp;
 };
 
+// Capture is a process-wide flag, and only end_capture() clears it. If the
+// solver throws while it is on, every later write to the shim streams would
+// disappear into the buffer instead of reaching the console -- and a check or
+// a model call in that window establishes no capture of its own, so its
+// diagnostics would vanish silently. RAII rather than a careful ordering of
+// statements: with_firewall() exists precisely because this code assumes
+// upstream can throw.
+class CaptureScope {
+public:
+    CaptureScope() { zusmt::begin_capture(); }
+    CaptureScope(CaptureScope const &) = delete;
+    CaptureScope & operator=(CaptureScope const &) = delete;
+    ~CaptureScope() {
+        if (!taken_) (void) zusmt::end_capture();
+    }
+    std::string take() {
+        taken_ = true;
+        return zusmt::end_capture();
+    }
+
+private:
+    bool taken_ = false;
+};
+
 // interpFile() takes a mutable char* because flex scans the buffer in place.
 void run_script(SolverHandle & handle, std::string const & script) {
     std::vector<char> buffer(script.begin(), script.end());
     buffer.push_back('\0');
 
-    zusmt::begin_capture();
+    CaptureScope capture;
     int const parse_status = handle.interp->interpFile(buffer.data());
-    std::string output = zusmt::end_capture();
+    std::string output = capture.take();
 
     // A parse failure and a semantic complaint arrive differently: the first
     // as a non-zero return, the second only as printed (error "...") text.
@@ -67,6 +91,11 @@ void run_script(SolverHandle & handle, std::string const & script) {
 // The tag distinguishes our external pointers from anyone else's. Without it,
 // passing some other package's pointer here would reinterpret_cast its
 // address and crash.
+SEXP exact_tag() {
+    static SEXP tag = Rf_install("exact");
+    return tag;
+}
+
 SEXP solver_tag() {
     static SEXP tag = Rf_install("zusmt_solver");
     return tag;
@@ -227,45 +256,53 @@ extern "C" SEXP C_solver_model(SEXP xp) {
         opensmt::Logic & logic = handle->interp->theLogic();
         auto * arith = dynamic_cast<opensmt::ArithLogic *>(&logic);
         std::unique_ptr<opensmt::Model> model = solver.getModel();
+        opensmt::vec<opensmt::SymRef> const & declarations = handle->interp->declarations();
 
-        std::vector<std::string> names;
-        std::vector<SEXP> values;
+        // Count first, so the result list can be allocated at its final size
+        // and every value stored straight into it. Collecting SEXPs in a
+        // std::vector on the way would leave them unprotected: R's collector
+        // cannot see C++ containers, and this loop allocates repeatedly.
+        R_xlen_t reported = 0;
+        for (opensmt::SymRef sym : declarations) {
+            if (logic.getSym(sym).nargs() == 0) ++reported;
+        }
 
-        for (opensmt::SymRef sym : handle->interp->declarations()) {
+        SEXP out = PROTECT(Rf_allocVector(VECSXP, reported));
+        SEXP names = PROTECT(Rf_allocVector(STRSXP, reported));
+
+        R_xlen_t at = 0;
+        for (opensmt::SymRef sym : declarations) {
             if (logic.getSym(sym).nargs() != 0) continue;
 
             opensmt::PTRef const term = logic.mkUninterpFun(sym, {});
             opensmt::PTRef const value = model->evaluate(term);
-            names.emplace_back(logic.getSymName(sym));
+            SET_STRING_ELT(names, at, Rf_mkChar(logic.getSymName(sym)));
 
             if (value == logic.getTerm_true()) {
-                values.push_back(Rf_ScalarLogical(TRUE));
+                SET_VECTOR_ELT(out, at, Rf_ScalarLogical(TRUE));
             } else if (value == logic.getTerm_false()) {
-                values.push_back(Rf_ScalarLogical(FALSE));
+                SET_VECTOR_ELT(out, at, Rf_ScalarLogical(FALSE));
             } else if (arith != nullptr && arith->isNumConst(value)) {
                 // A double loses exactness, and SMT rationals routinely are
                 // not representable in one. Report the double for arithmetic,
                 // and the exact value as an attribute for anyone who needs it.
                 opensmt::Number const & number = arith->getNumConst(value);
                 SEXP num = PROTECT(Rf_ScalarReal(number.get_d()));
-                Rf_setAttrib(num, Rf_install("exact"), Rf_mkString(number.get_str().c_str()));
-                values.push_back(num);
+                // num is protected across this allocation, then handed to a
+                // list that is itself protected.
+                Rf_setAttrib(num, exact_tag(), Rf_mkString(number.get_str().c_str()));
+                SET_VECTOR_ELT(out, at, num);
                 UNPROTECT(1);
             } else {
                 // Anything else -- an uninterpreted sort's value, say --
                 // comes back as the solver's own printed form rather than
                 // being coerced into an R type it does not fit.
-                values.push_back(Rf_mkString(logic.printTerm(value).c_str()));
+                SET_VECTOR_ELT(out, at, Rf_mkString(logic.printTerm(value).c_str()));
             }
+            ++at;
         }
 
-        SEXP out = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(values.size())));
-        SEXP nms = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(names.size())));
-        for (std::size_t i = 0; i < values.size(); ++i) {
-            SET_VECTOR_ELT(out, static_cast<R_xlen_t>(i), values[i]);
-            SET_STRING_ELT(nms, static_cast<R_xlen_t>(i), Rf_mkChar(names[i].c_str()));
-        }
-        Rf_setAttrib(out, R_NamesSymbol, nms);
+        Rf_setAttrib(out, R_NamesSymbol, names);
         UNPROTECT(2);
         return out;
     });
