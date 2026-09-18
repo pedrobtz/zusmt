@@ -15,7 +15,8 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/zusmt.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -269,15 +270,22 @@
 <p>Exit: <strong>met</strong> — 117 tests; <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code> and <code>lto</code> green in CI; coverage reporting both R and native. The <code>sanitizers</code> leg remains parked on the <code>r-actions</code> <code>CXX20</code> fix, which is the one part of this stage that cannot be finished from this repository.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-8--documentation">Stage 8 — Documentation<a class="anchor" aria-label="anchor" href="#stage-8--documentation"></a></h2>
-<ul><li>Roxygen for every exported function, runnable <code>@examples</code>.</li>
-<li>README rewritten around a real example; <code>pkgdown</code> reference index in <code>_pkgdown.yml</code>.</li>
-<li>A vignette showing an end-to-end problem, and a <code>NEWS.md</code> entry recording the vendored OpenSMT version.</li>
-<li>Document the vendoring process itself (how to bump OpenSMT) — <code>.github/CONTRIBUTING.md</code> or CLAUDE.md.</li>
-</ul></div>
+<h2 id="stage-8--documentation--done-pr-7">Stage 8 — Documentation — <strong>done</strong> (PR #7)<a class="anchor" aria-label="anchor" href="#stage-8--documentation--done-pr-7"></a></h2>
+<p>Every example in the README and the vignette was run before it was written down; the outputs are what the package actually printed, not what it ought to print. The vignette executes at build time, so a change that breaks an example breaks the build rather than leaving a document quietly claiming something false.</p>
+<ul><li>README: installation, a scheduling problem, exact rationals, the logics, and what is bundled.</li>
+<li>
+<code><a href="articles/zusmt.html">vignette("zusmt")</a></code>: what an SMT solver is for, sat and unsat, why <code>2x = 3</code> differs between <code>QF_LIA</code> and <code>QF_LRA</code>, uninterpreted functions, arrays, <code>push</code>/<code>pop</code>, and errors as conditions.</li>
+<li>
+<code>_pkgdown.yml</code> reference index — <code><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">pkgdown::check_pkgdown()</a></code> clean.</li>
+<li>
+<code>.github/CONTRIBUTING.md</code>: how to bump the bundled solver, why the patches exist, and the Windows check that six CI round trips paid for.</li>
+</ul><p>Exit: <strong>met</strong> — check clean with no notes, tarball 496K with the vignette.</p>
+</div>
 <div class="section level2">
 <h2 id="stage-9--cran-submission">Stage 9 — CRAN submission<a class="anchor" aria-label="anchor" href="#stage-9--cran-submission"></a></h2>
-<ul><li>Run the <code>cran-extrachecks</code> skill.</li>
+<ul><li>
+<strong>Re-enable the <code>nosuggests</code> leg</strong> (<code>.github/workflows/R-CMD-check.yaml</code>). Off since Stage 8, and it is the leg rather than the package: CRAN builds the tarball once with Suggests present and runs the noSuggests check against it, so the vignettes are already built, whereas the r-actions job builds inside the container and dies on <code>vignette builder 'knitr' not found</code>. Waiting on <code>--no-build-vignettes</code> in that job’s <code>build_args</code>, which is currently hardcoded.</li>
+<li>Run the <code>cran-extrachecks</code> skill.</li>
 <li>
 <strong>Installed size is ~45 MB</strong>, almost all <code>libs/</code>. That is an INFO in the r-hub container and a NOTE on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the explanation belongs in <code>cran-comments.md</code> before a reviewer asks, not after.</li>
 <li>Verify: <code>SystemRequirements</code> accurate, <code>LICENSE.note</code> present, copyright holders credited, install time and tarball size acceptable, no compiler warnings on CRAN’s flavours, <code>--as-cran</code> clean including the “libs size” note.</li>

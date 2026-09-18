@@ -1,0 +1,226 @@
+# Solving problems with zusmt
+
+An SMT solver answers one question: is there an assignment of values to
+these variables that makes all of these statements true at once? It
+differs from an optimiser in that it looks for *any* solution rather
+than the best one, and from a constraint solver in that the statements
+may involve several theories — integers, reals, uninterpreted functions,
+arrays — reasoned about together.
+
+``` r
+
+library(zusmt)
+```
+
+## Asking a question
+
+A solver is created for a logic, given assertions, and then asked to
+check them.
+
+``` r
+
+s <- smt_solver("QF_LIA")
+smt_assert(s, "
+  (declare-const x Int)
+  (declare-const y Int)
+  (assert (> x 3))
+  (assert (< x 7))
+  (assert (= y (* 2 x)))
+")
+
+smt_check(s)
+#> [1] "sat"
+```
+
+`"sat"` means a solution exists, and
+[`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md)
+produces one.
+
+``` r
+
+smt_model(s)
+#> $x
+#> [1] 4
+#> attr(,"exact")
+#> [1] "4"
+#> 
+#> $y
+#> [1] 8
+#> attr(,"exact")
+#> [1] "8"
+```
+
+The answer is *a* solution, not *the* solution: any `x` strictly between
+3 and 7 would do. If you need a particular one, constrain it further.
+
+## When there is no solution
+
+``` r
+
+u <- smt_solver("QF_LIA")
+smt_assert(u, "(declare-const x Int) (assert (= (* 2 x) 3))")
+smt_check(u)
+#> [1] "unsat"
+```
+
+`2x = 3` has no integer solution. Note that the same assertion is
+satisfiable over the reals, which is the difference between `QF_LIA` and
+`QF_LRA` rather than a detail of how the problem is written:
+
+``` r
+
+r <- smt_solver("QF_LRA")
+smt_assert(r, "(declare-const x Real) (assert (= (* 2.0 x) 3.0))")
+smt_check(r)
+#> [1] "sat"
+smt_model(r)$x
+#> [1] 1.5
+#> attr(,"exact")
+#> [1] "3/2"
+```
+
+Asking for a model when the answer was `"unsat"` is an error rather than
+an empty list, because there is nothing to report:
+
+``` r
+
+smt_model(u)
+#> Error in `smt_model()`:
+#> ! a model is only available after a satisfiable check
+```
+
+## Exact values
+
+Solvers compute in rationals. Many rationals are not doubles, so a model
+value carries both: the `numeric` you can compute with, and the solver’s
+exact answer as an attribute.
+
+``` r
+
+third <- smt_solver("QF_LRA")
+smt_assert(third, "(declare-const v Real) (assert (= (* 3.0 v) 1.0))")
+smt_check(third)
+#> [1] "sat"
+
+value <- smt_model(third)$v
+value
+#> [1] 0.3333333
+#> attr(,"exact")
+#> [1] "1/3"
+attr(value, "exact")
+#> [1] "1/3"
+```
+
+Whether that distinction matters depends on what you do next. It matters
+if you feed the answer back into another constraint.
+
+## Beyond arithmetic
+
+Uninterpreted functions let you state that something *is a function* —
+equal inputs give equal outputs — without saying which function. That
+alone is enough to make some problems unsatisfiable:
+
+``` r
+
+uf <- smt_solver("QF_UF")
+smt_assert(uf, "
+  (declare-sort U 0)
+  (declare-fun f (U) U)
+  (declare-const a U)
+  (declare-const b U)
+  (assert (= a b))
+  (assert (distinct (f a) (f b)))
+")
+
+smt_check(uf)
+#> [1] "unsat"
+```
+
+No definition of `f` can satisfy that, whatever `U` and `f` are.
+
+Arrays work similarly, with `select` and `store` and the rule that
+reading back what you just wrote gives what you wrote:
+
+``` r
+
+ax <- smt_solver("QF_AX")
+smt_assert(ax, "
+  (declare-sort I 0)
+  (declare-sort E 0)
+  (declare-const arr (Array I E))
+  (declare-const i I)
+  (declare-const e E)
+  (assert (distinct (select (store arr i e) i) e))
+")
+
+smt_check(ax)
+#> [1] "unsat"
+```
+
+## Building up a problem
+
+Assertions accumulate, so a problem can be built across several calls —
+and `push`/`pop` let you explore an assumption and then discard it.
+
+``` r
+
+k <- smt_solver("QF_LIA")
+smt_assert(k, "(declare-const n Int) (assert (> n 10))")
+smt_check(k)
+#> [1] "sat"
+
+smt_assert(k, "(push 1) (assert (< n 5))")
+smt_check(k)
+#> [1] "unsat"
+
+smt_assert(k, "(pop 1)")
+smt_check(k)
+#> [1] "sat"
+```
+
+[`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
+accepts any SMT-LIB2 command, not only `assert`, so a script written for
+another solver usually runs unchanged.
+
+## Which logic to ask for
+
+``` r
+
+smt_logics()
+#> [1] "QF_UF"    "QF_LIA"   "QF_LRA"   "QF_UFLIA" "QF_UFLRA" "QF_IDL"   "QF_RDL"  
+#> [8] "QF_AX"
+```
+
+Pick the weakest logic that expresses the problem: the solver can use a
+specialised decision procedure, and a mistake in the problem is more
+likely to be reported as an error than quietly accepted. `QF_IDL` and
+`QF_RDL` are difference logic — constraints of the form `x - y <= c` —
+which covers scheduling and similar problems and is decided faster than
+general arithmetic.
+
+## Errors
+
+Mistakes in the input become R conditions rather than printed output, so
+they can be caught:
+
+``` r
+
+bad <- smt_solver("QF_LIA")
+smt_assert(bad, "(assert (> undeclared 1))")
+#> Error in `smt_assert()`:
+#> ! (error "Unknown symbol `undeclared '")
+#> 
+#> (error "assertion returns an unknown sort")
+```
+
+## Releasing a solver
+
+A solver holds memory in the bundled C++ library, freed when R
+garbage-collects the handle. To release it at a known point — a long
+loop, a large problem — use
+[`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md).
+
+``` r
+
+smt_release(s)
+```

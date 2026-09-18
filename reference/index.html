@@ -15,7 +15,8 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/zusmt.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -32,9 +33,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="solving">Solving<a class="anchor" aria-label="anchor" href="#solving"></a></h2>
 
-
+      <div class="section-desc"><p>Create a solver, give it a problem in SMT-LIB2, and ask for an answer.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -42,6 +43,13 @@
 
 
       <dl><dt>
+
+          <code><a href="smt_solver.html">smt_solver()</a></code>
+
+        </dt>
+        <dd>Create a solver</dd>
+
+        <dt>
 
           <code><a href="smt_assert.html">smt_assert()</a></code>
 
@@ -57,17 +65,26 @@
 
         <dt>
 
-          <code><a href="smt_logics.html">smt_logics()</a></code>
-
-        </dt>
-        <dd>The logics this package supports</dd>
-
-        <dt>
-
           <code><a href="smt_model.html">smt_model()</a></code>
 
         </dt>
         <dd>The model of a satisfiable problem</dd>
+      </dl></div><div class="section level2">
+      <h2 id="housekeeping">Housekeeping<a class="anchor" aria-label="anchor" href="#housekeeping"></a></h2>
+
+      <div class="section-desc"><p>What the package supports, and how to free a solver before R does.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="smt_logics.html">smt_logics()</a></code>
+
+        </dt>
+        <dd>The logics this package supports</dd>
 
         <dt>
 
@@ -78,19 +95,13 @@
 
         <dt>
 
-          <code><a href="smt_solver.html">smt_solver()</a></code>
-
-        </dt>
-        <dd>Create a solver</dd>
-
-        <dt>
-
           <code><a href="smt_toolchain.html">smt_toolchain()</a></code>
 
         </dt>
         <dd>Report the toolchain the package was compiled with</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

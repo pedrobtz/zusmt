@@ -15,7 +15,8 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/zusmt.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -34,7 +35,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="zusmt-0009000">zusmt 0.0.0.9000<a class="anchor" aria-label="anchor" href="#zusmt-0009000"></a></h2>
-<ul><li><p>New <code><a href="../reference/smt_logics.html">smt_logics()</a></code> reports the supported logics, read from the single definition in the C++ layer.</p></li>
+<ul><li><p>Documentation: a README and a <code><a href="../articles/zusmt.html">vignette("zusmt")</a></code> built around problems that run, a pkgdown reference index, and <code>.github/CONTRIBUTING.md</code> covering how to bump the bundled solver.</p></li>
+<li><p>Bundles OpenSMT v2.9.2 (commit <code>34bc1b8</code>, 2025-06-16).</p></li>
+<li><p>New <code><a href="../reference/smt_logics.html">smt_logics()</a></code> reports the supported logics, read from the single definition in the C++ layer.</p></li>
 <li><p>All eight supported logics are now tested with both a satisfiable and an unsatisfiable problem, and a regression corpus of SMT-LIB files ships in <code>inst/smt2/</code>. Coverage, <code>nosuggests</code> and <code>nold</code> run in CI.</p></li>
 <li><p>Memory and UB checks (<code>sanitizers</code>, <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code>, <code>lto</code>) now run in CI.</p></li>
 <li><p>First public API: <code><a href="../reference/smt_solver.html">smt_solver()</a></code>, <code><a href="../reference/smt_assert.html">smt_assert()</a></code>, <code><a href="../reference/smt_check.html">smt_check()</a></code>, <code><a href="../reference/smt_model.html">smt_model()</a></code> and <code><a href="../reference/smt_release.html">smt_release()</a></code>. Problems are written in SMT-LIB2 and results come back as R values – a named list for models, with exact rationals attached to the doubles. Solver diagnostics are raised as R conditions rather than printed.</p></li>

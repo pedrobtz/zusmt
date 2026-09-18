@@ -433,18 +433,39 @@ green in CI; coverage reporting both R and native. The `sanitizers` leg
 remains parked on the `r-actions` `CXX20` fix, which is the one part of
 this stage that cannot be finished from this repository.
 
-## Stage 8 — Documentation
+## Stage 8 — Documentation — **done** (PR \#7)
 
-- Roxygen for every exported function, runnable `@examples`.
-- README rewritten around a real example; `pkgdown` reference index in
-  `_pkgdown.yml`.
-- A vignette showing an end-to-end problem, and a `NEWS.md` entry
-  recording the vendored OpenSMT version.
-- Document the vendoring process itself (how to bump OpenSMT) —
-  `.github/CONTRIBUTING.md` or CLAUDE.md.
+Every example in the README and the vignette was run before it was
+written down; the outputs are what the package actually printed, not
+what it ought to print. The vignette executes at build time, so a change
+that breaks an example breaks the build rather than leaving a document
+quietly claiming something false.
+
+- README: installation, a scheduling problem, exact rationals, the
+  logics, and what is bundled.
+- [`vignette("zusmt")`](https://pedrobtz.github.io/zusmt/articles/zusmt.md):
+  what an SMT solver is for, sat and unsat, why `2x = 3` differs between
+  `QF_LIA` and `QF_LRA`, uninterpreted functions, arrays, `push`/`pop`,
+  and errors as conditions.
+- `_pkgdown.yml` reference index —
+  [`pkgdown::check_pkgdown()`](https://pkgdown.r-lib.org/reference/check_pkgdown.html)
+  clean.
+- `.github/CONTRIBUTING.md`: how to bump the bundled solver, why the
+  patches exist, and the Windows check that six CI round trips paid for.
+
+Exit: **met** — check clean with no notes, tarball 496K with the
+vignette.
 
 ## Stage 9 — CRAN submission
 
+- **Re-enable the `nosuggests` leg**
+  (`.github/workflows/R-CMD-check.yaml`). Off since Stage 8, and it is
+  the leg rather than the package: CRAN builds the tarball once with
+  Suggests present and runs the noSuggests check against it, so the
+  vignettes are already built, whereas the r-actions job builds inside
+  the container and dies on `vignette builder 'knitr' not found`.
+  Waiting on `--no-build-vignettes` in that job’s `build_args`, which is
+  currently hardcoded.
 - Run the `cran-extrachecks` skill.
 - **Installed size is ~45 MB**, almost all `libs/`. That is an INFO in
   the r-hub container and a NOTE on CRAN, where anything over 5 MB draws
