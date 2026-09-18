@@ -6,7 +6,13 @@
 # * https://r-pkgs.org/testing-design.html#sec-tests-files-overview
 # * https://testthat.r-lib.org/articles/special-files.html
 
-library(testthat)
-library(zusmt)
+# The guard is the one departure from the standard file, and it is what the
+# NOSUGGESTS check flavour looks for: testthat is a Suggests, so it may be
+# absent, and calling library(testthat) at top level turns that into an ERROR
+# on a flavour where the package is otherwise fine.
+if (requireNamespace("testthat", quietly = TRUE)) {
+  library(testthat)
+  library(zusmt)
 
-test_check("zusmt")
+  test_check("zusmt")
+}

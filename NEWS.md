@@ -1,5 +1,9 @@
 # zusmt 0.0.0.9000
 
+* All eight supported logics are now tested with both a satisfiable and an
+  unsatisfiable problem, and a regression corpus of SMT-LIB files ships in
+  `inst/smt2/`. Coverage, `nosuggests` and `nold` run in CI.
+
 * Memory and UB checks (`sanitizers`, `valgrind`, `gctorture`, `rchk`, `lto`) now run in CI.
 * First public API: `smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()`
   and `smt_release()`. Problems are written in SMT-LIB2 and results come back as

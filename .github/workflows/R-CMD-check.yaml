@@ -15,6 +15,13 @@ jobs:
   R-CMD-check:
     uses: pedrobtz/r-actions/.github/workflows/r-cmd-check.yml@v1
     with:
+      # Two further CRAN flavours, both of which this package has something to
+      # fail on. nosuggests: testthat is the only Suggests and tests/testthat.R
+      # would error there without its requireNamespace guard. nold: R built
+      # --disable-long-double, which matters for a package whose model values
+      # are rationals converted to doubles.
+      nosuggests: true
+      nold: true
       # --as-cran turns on the bashisms test, which reports a WARNING when the
       # `checkbashisms` script is merely absent -- true of the macOS and
       # Windows runners, where no configure script is even run. With
