@@ -72,30 +72,45 @@ void run_script(SolverHandle & handle, std::string const & script) {
     std::vector<char> buffer(script.begin(), script.end());
     buffer.push_back('\0');
 
+    zusmt::clear_error();
     CaptureScope capture;
     int const parse_status = handle.interp->interpFile(buffer.data());
     std::string output = capture.take();
 
     // A parse failure and a semantic complaint arrive differently: the first
-    // as a non-zero return, the second only as printed (error "...") text.
-    // Both have to become exceptions, or a mistyped script would look like it
-    // had been accepted.
+    // as a non-zero return, the second through notify_formatted(error = true),
+    // which a patch rule has record itself. Both have to become exceptions, or
+    // a mistyped script would look like it had been accepted.
+    //
+    // Asking the solver rather than searching its output for "(error" matters
+    // in both directions: (echo "(error ...)") succeeds and would otherwise be
+    // rejected, and a change to upstream's error format would otherwise pass
+    // errors through as success.
     if (parse_status != 0) {
         throw std::runtime_error(output.empty() ? "could not parse SMT-LIB input" : output);
     }
-    if (output.find("(error") != std::string::npos) {
-        throw std::runtime_error(output);
+    if (zusmt::error_was_reported()) {
+        throw std::runtime_error(output.empty() ? "the solver reported an error" : output);
+    }
+
+    // Whatever the script printed is the whole point of commands like
+    // (get-model), (get-value ...), (get-info ...) and (echo ...). Capturing
+    // it to decide about errors and then dropping it made those commands run
+    // and report nothing.
+    if (!output.empty()) {
+        Rprintf("%s", output.c_str());
     }
 }
 
-// The tag distinguishes our external pointers from anyone else's. Without it,
-// passing some other package's pointer here would reinterpret_cast its
-// address and crash.
+// The attribute carrying a model value's exact rational.
 SEXP exact_tag() {
     static SEXP tag = Rf_install("exact");
     return tag;
 }
 
+// The tag distinguishes our external pointers from anyone else's. Without it,
+// passing some other package's pointer here would reinterpret_cast its
+// address and crash.
 SEXP solver_tag() {
     static SEXP tag = Rf_install("zusmt_solver");
     return tag;
@@ -189,7 +204,7 @@ extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated) {
 }
 
 extern "C" SEXP C_solver_check(SEXP xp) {
-    SEXP answer = PROTECT(zusmt::with_firewall([&]() -> SEXP {
+    return zusmt::with_firewall([&]() -> SEXP {
         SolverHandle * handle = handle_from(xp);
 
         zusmt::clear_interrupt_request();
@@ -210,18 +225,28 @@ extern "C" SEXP C_solver_check(SEXP xp) {
             result = "unknown";
         }
         return Rf_mkString(result);
-    }));
+    });
+}
 
-    // No R_CheckUserInterrupt() here, deliberately. It would be a no-op: the
-    // poll that noticed the interrupt is what consumed R's pending flag, so
-    // by this point there is nothing left for it to raise. Measured, not
-    // assumed -- tests/testthat/test-interrupt.R pins it.
-    //
-    // Delivery happens in solver_check() in R, which signals an interrupt
-    // condition of its own. This function's contract is to *report*
-    // "interrupted", not to raise it.
-    UNPROTECT(1);
-    return answer;
+// No R_CheckUserInterrupt() anywhere above, deliberately. It would be a no-op:
+// the poll that noticed the interrupt is what consumed R's pending flag, so by
+// the time check() returns there is nothing left for it to raise. Measured,
+// not assumed -- tests/testthat/test-interrupt.R pins it.
+//
+// Delivery happens in solver_check() in R, which signals an interrupt
+// condition of its own. C_solver_check()'s contract is to *report*
+// "interrupted", not to raise it.
+
+// Is this handle still usable? A tag and pointer check, nothing more: the R
+// print method needs to know whether a solver has been released, and using
+// C_solver_check() for that ran a full satisfiability check to answer it.
+extern "C" SEXP C_solver_is_live(SEXP xp) {
+    return zusmt::with_firewall([&]() -> SEXP {
+        bool const live = TYPEOF(xp) == EXTPTRSXP &&
+                          R_ExternalPtrTag(xp) == solver_tag() &&
+                          R_ExternalPtrAddr(xp) != nullptr;
+        return Rf_ScalarLogical(live ? TRUE : FALSE);
+    });
 }
 
 // Releases the solver early rather than waiting for gc. Idempotent: the

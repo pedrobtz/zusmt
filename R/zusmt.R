@@ -52,7 +52,9 @@ smt_logics <- function() {
 #' @param solver A solver from [smt_solver()].
 #' @param text A single string of SMT-LIB2 input. Newlines are fine, and
 #'   several commands may appear in one call.
-#' @return The solver, invisibly, so calls can be chained.
+#' @return The solver, invisibly, so calls can be chained. Anything the script
+#'   prints — the output of `get-model`, `get-value`, `get-info` or `echo`, for
+#'   instance — is written to the console.
 #' @export
 #' @examples
 #' s <- smt_solver("QF_LRA")
@@ -141,12 +143,13 @@ smt_release <- function(solver) {
 #' @examples
 #' print(smt_solver("QF_LIA"))
 print.zusmt_solver <- function(x, ...) {
-  released <- tryCatch({
-    solver_check(x$ptr)
-    FALSE
-  }, error = function(e) grepl("released", conditionMessage(e), fixed = TRUE))
+  # A pointer check, not a solve. This used to call solver_check() to find out
+  # whether the handle was still usable, which ran a full satisfiability check
+  # to answer it -- more than a second on a modest problem, and unbounded on a
+  # hard one, just to print one line.
+  live <- solver_is_live(x$ptr)
 
-  cat("<zusmt solver: ", x$logic, if (released) " (released)" else "", ">\n", sep = "")
+  cat("<zusmt solver: ", x$logic, if (!live) " (released)" else "", ">\n", sep = "")
   invisible(x)
 }
 

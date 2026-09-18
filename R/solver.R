@@ -49,6 +49,10 @@ solver_release <- function(solver) {
   invisible(.Call(C_solver_release, solver))
 }
 
+solver_is_live <- function(solver) {
+  .Call(C_solver_is_live, solver)
+}
+
 throw_from_cpp <- function() {
   .Call(C_throw_from_cpp)
 }

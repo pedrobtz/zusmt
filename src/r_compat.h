@@ -65,6 +65,17 @@ int alloc_printf(char ** out, char const * fmt, ...) ZUSMT_PRINTF_FMT(2, 3);
 void begin_capture();
 std::string end_capture();
 
+// Did the solver report an error?
+//
+// Deciding that by searching its output for "(error" is unreliable in both
+// directions: a successful (echo "(error ...)") trips it, and a change to
+// upstream's error format would silence it. The solver already knows -- it
+// calls notify_formatted() with error = true -- so a patch rule has it say
+// so here, and run_script() asks rather than guesses.
+void note_error();
+void clear_error();
+bool error_was_reported();
+
 // Interrupt polling for the solver's search loop.
 //
 // R delivers an interrupt by longjmp, which must never cross a C++ frame:

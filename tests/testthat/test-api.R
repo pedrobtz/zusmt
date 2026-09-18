@@ -144,3 +144,43 @@ test_that("the model reader survives a collection at every allocation", {
   expect_identical(names(m), paste0("v", 1:60))
   expect_equal(unname(vapply(m, as.numeric, numeric(1))), as.numeric(1:60))
 })
+
+test_that("output from reporting commands reaches the user", {
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, "(declare-const x Int) (assert (= x 42))")
+  expect_identical(smt_check(s), "sat")
+
+  # (get-model), (get-value), (get-info) and (echo) exist to print. Capturing
+  # their output to decide about errors and then dropping it made them run and
+  # report nothing.
+  shown <- capture.output(smt_assert(s, "(get-model)"))
+  expect_true(any(grepl("define-fun", shown, fixed = TRUE)))
+  expect_true(any(grepl("42", shown, fixed = TRUE)))
+
+  echoed <- capture.output(smt_assert(s, '(echo "hello")'))
+  expect_true(any(grepl("hello", echoed, fixed = TRUE)))
+})
+
+test_that("a successful command is not mistaken for an error by its own output", {
+  s <- smt_solver("QF_LIA")
+
+  # The error oracle used to be a search for "(error" in the transcript, so
+  # echoing that text turned a successful command into a failure. The solver
+  # now reports errors itself, through notify_formatted().
+  expect_silent(out <- capture.output(smt_assert(s, '(echo "(error not really)")')))
+  expect_true(any(grepl("(error not really)", out, fixed = TRUE)))
+
+  # And a real error is still an error.
+  expect_error(smt_assert(s, "(assert (> nope 1))"), "Unknown symbol")
+})
+
+test_that("printing a solver does not solve it", {
+  s <- smt_solver("QF_UF")
+  # 10 pigeons into 9 holes: ~18s to decide. Printing must not wait for that.
+  # The pigeonhole builder is an internal helper taking the handle itself,
+  # not the S3 wrapper smt_solver() returns.
+  solver_assert_pigeonhole(s$ptr, 9)
+
+  elapsed <- system.time(invisible(capture.output(print(s))))[["elapsed"]]
+  expect_lt(elapsed, 2)
+})

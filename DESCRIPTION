@@ -7,7 +7,7 @@ Authors@R: c(
            comment = "bundled OpenSMT sources; see LICENSE.note")
   )
 Description: Solve satisfiability modulo theories (SMT) problems using the
-    bundled 'OpenSMT' solver, described in Hyvaerinen, Marescotti, Alt and
+    bundled 'OpenSMT' solver, described in Hyvärinen, Marescotti, Alt and
     Sharygina (2016) <doi:10.1007/978-3-319-40970-2_35>. Problems are written
     in the 'SMT-LIB' standard language and answers come back as R values,
     with model values carrying the solver's exact rational alongside the

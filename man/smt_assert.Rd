@@ -13,7 +13,9 @@ smt_assert(solver, text)
 several commands may appear in one call.}
 }
 \value{
-The solver, invisibly, so calls can be chained.
+The solver, invisibly, so calls can be chained. Anything the script
+prints — the output of \code{get-model}, \code{get-value}, \code{get-info} or \code{echo}, for
+instance — is written to the console.
 }
 \description{
 Runs SMT-LIB2 text through the bundled solver. Despite the name, any
