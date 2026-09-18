@@ -196,6 +196,20 @@ The last two are per-call-site rather than blanket rewrites, because `Interpret`
 `exit()` and 4 `fprintf` calls write to a real file rather than the console — a blanket rule would
 either not compile or send proof output to the console.
 
+Two portability problems only CI could find, both now rules in the same script:
+
+- **Windows has no `<sys/resource.h>`.** Upstream times itself with `getrusage()`, so the mingw build
+  failed at the first file including `Timer.h`. [src/r_rusage.h](src/r_rusage.h) supplies it on
+  Windows via `clock()` — not `GetProcessTimes()`, because `<windows.h>` would reach 87 translation
+  units and bring its `min`/`max` and `ERROR` macros with them. The two `<sys/wait.h>` includes were
+  vestigial (neither file calls `fork` or `wait`) and are simply dropped.
+- **libgmpxx is an ABI dependency, and was only needed for one function.** `operator<<(ostream&,
+  mpq)` lives in the library and is compiled against whichever C++ standard library built it, so on
+  a libc++ toolchain linking a libstdc++-built libgmpxx — CRAN's `clang23` container, FreeBSD, any
+  mixed setup — the shared object fails to load with an undefined symbol. It was the *only* C++
+  symbol we took from libgmpxx; everything else is plain C. Two call sites now use header-only
+  `get_str()` instead, which drops the dependency rather than working around it.
+
 Exit: **met** — `R CMD check --as-cran` reports no compiled-code findings.
 
 ## Stage 5 — The R/C++ boundary

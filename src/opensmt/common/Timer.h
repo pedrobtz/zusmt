@@ -30,7 +30,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <sys/resource.h>
+#include <r_rusage.h>
 #include <sys/time.h>
 
 namespace opensmt {

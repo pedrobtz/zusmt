@@ -88,7 +88,7 @@ void FastRational::print(std::ostream & out) const
         assert(mpqPartValid());
         mpq_class mpq_c( mpq );
         if ( sign ) mpq_c = -mpq_c;
-        out << (sign?"(- ":"") << mpq_c << (sign?")":"");
+        out << (sign?"(- ":"") << mpq_c.get_str() << (sign?")":"");
     }
 }
 
@@ -102,7 +102,7 @@ void FastRational::print_(std::ostream & out) const
         }
     } else {
         assert(mpqPartValid());
-        out << mpq;
+        out << mpq_class(mpq).get_str();
     }
 }
 

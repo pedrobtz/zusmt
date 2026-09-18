@@ -11,7 +11,6 @@
 
 #include <models/ModelBuilder.h>
 
-#include <sys/wait.h>
 #include <cassert>
 #include <sstream>
 #include <unordered_set>

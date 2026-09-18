@@ -116,7 +116,39 @@ patch_exact parsers/smt2new/smt2newlexer.cc \
   's/yyin = stdin;/yyin = NULL;  \/* zusmt: set by yyset_in(); never read *\//; s/yyout = stdout;/yyout = NULL;  \/* zusmt: ECHO is unreachable *\//' \
   'yyin = stdin / yyout = stdout defaults'
 
-# 6. Make the shim visible. Prepending the include is more portable than a
+# 6. POSIX headers that Windows does not have. Upstream targets Linux and
+#    macOS; mingw has neither <sys/resource.h> nor <sys/wait.h>, and the
+#    Windows build fails at the first file that includes Timer.h.
+echo "    Windows portability:"
+patch_exact common/Timer.h \
+  's|#include <sys/resource.h>|#include <r_rusage.h>|' \
+  'sys/resource.h -> the getrusage() shim'
+patch_exact common/SystemQueries.h \
+  's|#include <sys/resource.h>|#include <r_rusage.h>|' \
+  'sys/resource.h -> the getrusage() shim'
+#    Both <sys/wait.h> includes are vestigial: neither file calls fork(),
+#    wait(), waitpid() or anything else from it.
+patch_exact tsolvers/THandler.cc \
+  '/#include <sys\/wait.h>/d' \
+  'drop unused sys/wait.h'
+patch_exact tsolvers/egraph/UFInterpolator.cc \
+  '/#include <sys\/wait.h>/d' \
+  'drop unused sys/wait.h'
+
+# 7. The one libgmpxx C++ symbol. gmpxx's operator<<(ostream&, mpq) is the
+#    only thing this package used from the *library* rather than the header,
+#    and it is compiled against whichever C++ standard library built libgmpxx.
+#    On a libc++ toolchain linking a libstdc++-built libgmpxx (CRAN's clang23
+#    container, FreeBSD, mixed setups) it does not resolve and the .so fails
+#    to load with an undefined symbol. get_str() is header-only -- it calls
+#    the C __gmpq_get_str -- and prints identically in base 10, so this drops
+#    the ABI dependency instead of working around it.
+echo "    libgmpxx ABI:"
+patch_exact common/numbers/FastRational.cc \
+  's|out << (sign?"(- ":"") << mpq_c << (sign?")":"");|out << (sign?"(- ":"") << mpq_c.get_str() << (sign?")":"");|; s|^        out << mpq;|        out << mpq_class(mpq).get_str();|' \
+  'stream mpq via get_str() rather than gmpxx operator<<'
+
+# 8. Make the shim visible. Prepending the include is more portable than a
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0

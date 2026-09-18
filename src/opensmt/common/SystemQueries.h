@@ -12,7 +12,7 @@
 
 
 #include <sys/time.h>
-#include <sys/resource.h>
+#include <r_rusage.h>
 #include <unistd.h>
 #include <cstdio>
 
