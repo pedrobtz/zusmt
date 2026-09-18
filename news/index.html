@@ -19,6 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/pedrobtz/zusmt/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -28,18 +29,19 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-
+      <small>Source: <a href="https://github.com/pedrobtz/zusmt/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="zusmt-development-version">zusmt (development version)<a class="anchor" aria-label="anchor" href="#zusmt-development-version"></a></h2>
-<ul><li>Initial CRAN submission.</li>
+<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="zusmt-0009000">zusmt 0.0.0.9000<a class="anchor" aria-label="anchor" href="#zusmt-0009000"></a></h2>
+<ul><li>Added <code><a href="../reference/smt_toolchain.html">smt_toolchain()</a></code>, a build-time probe reporting the C++20 compiler, GMP version and thread support the package was compiled against. This is Stage 1 of <code>roadmap.md</code>: it establishes that R’s toolchain can build what OpenSMT requires, ahead of vendoring the solver itself.</li>
+<li>Added <code>configure</code> / <code>configure.win</code>, which locate GMP and generate <code>src/Makevars</code>.</li>
 </ul></div>
   </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by First Last.</p>
+  <p>Developed by Pedro Botz.</p>
 </div>
 
 <div class="pkgdown-footer-right">

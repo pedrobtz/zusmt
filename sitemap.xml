@@ -1,10 +1,14 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://pedrobtz.github.io/zusmt/404.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/CLAUDE.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/LICENSE-text.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/LICENSE.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/authors.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/news/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/reference/index.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_toolchain.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/zusmt-package.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/roadmap.html</loc></url>
 </urlset>
 
