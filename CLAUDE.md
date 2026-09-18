@@ -11,22 +11,23 @@ on Linux, macOS and Windows (see the CI matrix in [R-CMD-check.yaml](.github/wor
 
 ## Current state
 
-Stages 1–5 of [roadmap.md](roadmap.md) are done. OpenSMT v2.9.2 is bundled, patched for R hosting,
-compiled on all seven CI legs, and reachable from R through external-pointer handles with
-finalizers. What does **not** exist yet is the public API — Stage 6. Everything in
-[R/solver.R](R/solver.R) is internal scaffolding, as are `smoke_solve()` and `smt_toolchain()`.
+Stages 1–6 of [roadmap.md](roadmap.md) are done: the package has a working public API.
+`smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()` and `smt_release()` take SMT-LIB2 text
+and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README,
+vignette) are next.
 
-Two rules govern [src/boundary.h](src/boundary.h) and everything that uses it, and they are the
-reason the code looks the way it does:
+The API is deliberately a front end to the solver's own language: `smt_assert()` accepts any
+SMT-LIB2 commands, not only assertions. Two things make that work and are easy to break:
 
-- **No C++ exception may reach R.** Every entry point wraps its body in `zusmt::with_firewall()`.
-- **A pending interrupt is consumed by the poll that detects it** (`R_ToplevelExec`), so
-  `solver_check()` re-signals an `interrupt` condition in R. Do not "simplify" that away by calling
-  `R_CheckUserInterrupt()` at the boundary and expecting it to fire — it does not, and
-  `tests/testthat/test-interrupt.R` pins why.
-- **No longjmp may cross a live C++ frame.** The firewall copies the message into a plain buffer and
-  lets every C++ object die before calling `Rf_error()`; `R_CheckUserInterrupt()` is called only
-  after the firewall has returned. Interrupts are *polled* during a search, never delivered into it.
+- **Results are read from the solver, not from its output.** `Interpret` prints its answers;
+  `Interpret::getMainSolver()` is public, so [src/solver.cc](src/solver.cc) reads status and model
+  from there. `logic` and `user_declarations` are protected and reached by subclassing `Interpret`
+  in our own code — deliberately not by patching the vendored header, so a bump does not disturb it.
+- **Diagnostics are captured and raised as conditions.** `zusmt::begin_capture()` redirects the
+  shim's streams into a buffer, and `run_script()` turns anything containing `(error` — or a
+  non-zero parse status — into an exception the firewall converts to an R error. Output written
+  with `Rprintf` is *not* captured, which is why a patch rule routes the parser's own syntax errors
+  through `zusmt::rerr()` instead.
 
 ## Vendored sources
 

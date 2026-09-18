@@ -107,6 +107,7 @@ Workflows to adopt at their stage, not before:
 | `vendor.yml` | 2 | Needs `src/opensmt/` and a checksum manifest to guard |
 | `vendor-upstream.yml` | 2 | Needs a pinned version for it to compare against |
 | `sanitizers`, `valgrind`, `gctorture`, `rchk`, `lto` (`native-checks.yml`) | 5–7 | Want a real R/C++ boundary and a test suite to exercise it |
+| `nosuggests` and `nold` inputs to `r-cmd-check.yml` | 7 | `nosuggests` has something to catch once there are examples: the one `Suggests` is testthat, and `tests/testthat.R` calls `library(testthat)` at top level |
 | `coverage.yml` (`native: true`) | 7 | The gcov table answers "how much of the vendored solver do our tests reach?" |
 
 Exit: green on macOS, Windows, ubuntu release/oldrel-1 and the three r-devel containers.
@@ -258,13 +259,29 @@ Exit: **met** — 26 tests, covering `gc()` survival, collection of unreferenced
 release being idempotent rather than a double free, foreign external pointers rejected by tag, and a
 C++ exception arriving as an ordinary R condition with the session still usable.
 
-## Stage 6 — R-facing API
+## Stage 6 — R-facing API — **done** (PR #5)
 
-Per the Stage 0 decision. A plausible minimum: `smt_solver()`, `smt_assert()`, `smt_check()`,
-`smt_model()`, plus `print`/`format` methods. Decide error vs. value semantics for `unknown`, and how
-rationals come back to R (double, character, or `gmp::bigq`).
+**Decision: SMT-LIB2 text in, R values out.** The objection to it — that `Interpret` *prints* its
+answers — turned out not to bind, because `Interpret::getMainSolver()` is public, so results are read
+from the solver rather than scraped from printed output. `Interpret` keeps `logic` and
+`user_declarations` protected, reached by subclassing it in our own code rather than patching the
+vendored header, so nothing here needs re-applying at the next bump.
 
-Exit: the README example is real code that runs.
+`smt_assert()` accepts any SMT-LIB2 commands, not only assertions — `push`/`pop`, declarations and
+options all work — because a front end to the solver's own language is more useful than a curated
+subset of it.
+
+**Rationals keep their exact form.** A model value comes back as a double carrying an `"exact"`
+attribute with the solver's own rational, since `1/3` is not representable as a double and silently
+rounding a solver's answer is the wrong default.
+
+**Diagnostics became conditions, which took two fixes.** Semantic errors reach the console through
+`notify_formatted`, so `zusmt::begin_capture()` collects that output and turns it into an R error.
+Parse errors went through `Rprintf`, which the capture cannot see, so they leaked to the console
+*and* produced a contentless R error — a patch rule now routes them through `zusmt::rerr()`.
+
+Exit: **met** — 28 API tests, including `push`/`pop`, exact rationals, arity > 0 omitted from models,
+and both error paths.
 
 ## Stage 7 — Tests and memory hygiene
 

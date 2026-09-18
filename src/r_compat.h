@@ -11,6 +11,7 @@
 // re-applies the same rules rather than re-deriving them from a check log.
 
 #include <ostream>
+#include <string>
 
 // Format-checking for the printf-style shim below. The archetype has to be
 // chosen per compiler, not per __GNUC__: clang defines __GNUC__ but does not
@@ -49,6 +50,20 @@ std::ostream & rerr();
 // or -1. Used on every platform rather than only Windows, so the vendored
 // call sites have one behaviour everywhere.
 int alloc_printf(char ** out, char const * fmt, ...) ZUSMT_PRINTF_FMT(2, 3);
+
+// Capturing solver output.
+//
+// The bundled solver reports parse and semantic errors by *printing* them --
+// notify_formatted() writes (error "...") to the console. An R API has to
+// turn those into conditions instead, so a script with a typo raises an error
+// rather than printing one and carrying on. While capture is on, rout() and
+// rerr() append to a buffer rather than reaching the console.
+//
+// Only output written through those streams is captured. Anything upstream
+// sends via Rprintf (rule 2's rewrites) goes straight to the console, which
+// is right for progress output and wrong for nothing we currently need.
+void begin_capture();
+std::string end_capture();
 
 // Interrupt polling for the solver's search loop.
 //

@@ -98,6 +98,16 @@ patch_exact parsers/smt2new/smt2newlexer.cc \
   's/exit( YY_EXIT_FAILURE );/zusmt::fatal("bundled solver: lexer fatal error");/; s/exit(1); }/zusmt::fatal("SMT-LIB syntax error"); }/; s/exit( 1 ); }/zusmt::fatal("SMT-LIB syntax error"); }/' \
   'exit() in the flex skeleton and error rules'
 
+#    The parser reports syntax errors through Rprintf, which goes straight to
+#    the console. The R API captures the solver's output so it can raise a
+#    condition instead (zusmt::begin_capture), and that only sees the ostream
+#    shims -- so a syntax error printed this way leaked to the console
+#    alongside the R error raised for it. Routing it through zusmt::rerr()
+#    puts it where the capture can find it.
+patch_exact parsers/smt2new/smt2newparser.cc \
+  's|Rprintf("At interactive input: %s\\n", s);|zusmt::rerr() << "At interactive input: " << s << "\\n";|; s|Rprintf( "At line %d: %s\\n", locp->first_line, s );|zusmt::rerr() << "At line " << locp->first_line << ": " << s << "\\n";|' \
+  'parser errors via rerr(), so the R API can capture them'
+
 # 5. The stdout/stderr FILE* symbols themselves. R CMD check looks for these
 #    in the shared object, so rewriting the calls that use them is not enough;
 #    the remaining references have to go too.

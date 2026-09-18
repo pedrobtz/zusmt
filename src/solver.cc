@@ -9,6 +9,7 @@
 #include "boundary.h"
 #include "r_compat.h"
 
+#include <api/Interpret.h>
 #include <api/MainSolver.h>
 #include <logics/ArithLogic.h>
 #include <logics/Logic.h>
@@ -18,16 +19,50 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
-struct SolverHandle {
-    // Declaration order is destruction order, reversed: solver, then config,
-    // then logic. Do not reorder.
-    std::unique_ptr<opensmt::Logic> logic;
-    std::unique_ptr<opensmt::SMTConfig> config;
-    std::unique_ptr<opensmt::MainSolver> solver;
+// Interpret keeps the logic, the solver and the list of user declarations as
+// protected members, and exposes only getMainSolver(). Subclassing is how a
+// consumer is meant to reach the rest, and it beats patching the vendored
+// header: nothing here has to be re-applied at the next version bump.
+class RInterpret : public opensmt::Interpret {
+public:
+    using opensmt::Interpret::Interpret;
+
+    opensmt::Logic & theLogic() { return *logic; }
+    opensmt::vec<opensmt::SymRef> const & declarations() const { return user_declarations; }
 };
+
+struct SolverHandle {
+    // Declaration order is destruction order, reversed: the interpreter (and
+    // the solver it owns) goes first, then the config it refers to. Do not
+    // reorder.
+    std::unique_ptr<opensmt::SMTConfig> config;
+    std::unique_ptr<RInterpret> interp;
+};
+
+// interpFile() takes a mutable char* because flex scans the buffer in place.
+void run_script(SolverHandle & handle, std::string const & script) {
+    std::vector<char> buffer(script.begin(), script.end());
+    buffer.push_back('\0');
+
+    zusmt::begin_capture();
+    int const parse_status = handle.interp->interpFile(buffer.data());
+    std::string output = zusmt::end_capture();
+
+    // A parse failure and a semantic complaint arrive differently: the first
+    // as a non-zero return, the second only as printed (error "...") text.
+    // Both have to become exceptions, or a mistyped script would look like it
+    // had been accepted.
+    if (parse_status != 0) {
+        throw std::runtime_error(output.empty() ? "could not parse SMT-LIB input" : output);
+    }
+    if (output.find("(error") != std::string::npos) {
+        throw std::runtime_error(output);
+    }
+}
 
 // The tag distinguishes our external pointers from anyone else's. Without it,
 // passing some other package's pointer here would reinterpret_cast its
@@ -57,10 +92,14 @@ SolverHandle * handle_from(SEXP xp) {
     return handle;
 }
 
-opensmt::Logic_t logic_from_name(std::string const & name) {
-    if (name == "QF_UF") return opensmt::Logic_t::QF_UF;
-    if (name == "QF_LRA") return opensmt::Logic_t::QF_LRA;
-    if (name == "QF_LIA") return opensmt::Logic_t::QF_LIA;
+// Deliberately a short list rather than everything upstream accepts: these
+// are the logics the package tests. Widening it is a decision with test
+// obligations attached, not a typo fix.
+void check_logic_supported(std::string const & name) {
+    if (name == "QF_UF" || name == "QF_LRA" || name == "QF_LIA" || name == "QF_UFLRA" ||
+        name == "QF_UFLIA" || name == "QF_IDL" || name == "QF_RDL" || name == "QF_AX") {
+        return;
+    }
     throw std::invalid_argument("unsupported logic: " + name);
 }
 
@@ -72,16 +111,17 @@ extern "C" SEXP C_solver_new(SEXP logic_name) {
             throw std::invalid_argument("logic must be a single string");
         }
         std::string const name(CHAR(STRING_ELT(logic_name, 0)));
-        opensmt::Logic_t const which = logic_from_name(name);
+        check_logic_supported(name);
 
         auto handle = std::make_unique<SolverHandle>();
-        if (which == opensmt::Logic_t::QF_UF) {
-            handle->logic = std::make_unique<opensmt::Logic>(which);
-        } else {
-            handle->logic = std::make_unique<opensmt::ArithLogic>(which);
-        }
         handle->config = std::make_unique<opensmt::SMTConfig>();
-        handle->solver = std::make_unique<opensmt::MainSolver>(*handle->logic, *handle->config, "zusmt");
+        handle->interp = std::make_unique<RInterpret>(*handle->config);
+
+        // The interpreter builds its logic and solver when it sees set-logic,
+        // so the handle is not usable until this runs. Doing it here means a
+        // bad logic name fails at solver_new() rather than at the first
+        // assert.
+        run_script(*handle, "(set-logic " + name + ")");
 
         // Allocate the R object only once the C++ side is fully built: if
         // this allocation triggers a gc that errors, there is no half-built
@@ -103,9 +143,10 @@ extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated) {
         if (TYPEOF(name) != STRSXP || Rf_length(name) != 1) {
             throw std::invalid_argument("name must be a single string");
         }
-        opensmt::PTRef var = handle->logic->mkBoolVar(CHAR(STRING_ELT(name, 0)));
-        opensmt::PTRef term = (Rf_asLogical(negated) == TRUE) ? handle->logic->mkNot(var) : var;
-        handle->solver->insertFormula(term);
+        opensmt::PTRef var = handle->interp->theLogic().mkBoolVar(CHAR(STRING_ELT(name, 0)));
+        opensmt::Logic & logic = handle->interp->theLogic();
+        opensmt::PTRef term = (Rf_asLogical(negated) == TRUE) ? logic.mkNot(var) : var;
+        handle->interp->getMainSolver().insertFormula(term);
         return R_NilValue;
     });
 }
@@ -115,7 +156,7 @@ extern "C" SEXP C_solver_check(SEXP xp) {
         SolverHandle * handle = handle_from(xp);
 
         zusmt::clear_interrupt_request();
-        opensmt::sstat const status = handle->solver->check();
+        opensmt::sstat const status = handle->interp->getMainSolver().check();
 
         char const * result = "error";
         if (zusmt::interrupt_was_requested()) {
@@ -157,6 +198,79 @@ extern "C" SEXP C_solver_release(SEXP xp) {
     });
 }
 
+// Runs SMT-LIB2 text through the bundled interpreter. Any commands are
+// allowed, not only assertions: the package's job here is to be a faithful
+// front end to the solver's own language rather than a curated subset.
+extern "C" SEXP C_solver_run(SEXP xp, SEXP text) {
+    return zusmt::with_firewall([&]() -> SEXP {
+        SolverHandle * handle = handle_from(xp);
+        if (TYPEOF(text) != STRSXP || Rf_length(text) != 1) {
+            throw std::invalid_argument("SMT-LIB input must be a single string");
+        }
+        run_script(*handle, CHAR(STRING_ELT(text, 0)));
+        return R_NilValue;
+    });
+}
+
+// The model, as a named list. Only 0-ary declarations are reported: an
+// uninterpreted function of arity > 0 has no single value to put in a list,
+// and inventing one would be worse than omitting it.
+extern "C" SEXP C_solver_model(SEXP xp) {
+    return zusmt::with_firewall([&]() -> SEXP {
+        SolverHandle * handle = handle_from(xp);
+        opensmt::MainSolver & solver = handle->interp->getMainSolver();
+
+        if (solver.getStatus() != opensmt::s_True) {
+            throw std::runtime_error("a model is only available after a satisfiable check");
+        }
+
+        opensmt::Logic & logic = handle->interp->theLogic();
+        auto * arith = dynamic_cast<opensmt::ArithLogic *>(&logic);
+        std::unique_ptr<opensmt::Model> model = solver.getModel();
+
+        std::vector<std::string> names;
+        std::vector<SEXP> values;
+
+        for (opensmt::SymRef sym : handle->interp->declarations()) {
+            if (logic.getSym(sym).nargs() != 0) continue;
+
+            opensmt::PTRef const term = logic.mkUninterpFun(sym, {});
+            opensmt::PTRef const value = model->evaluate(term);
+            names.emplace_back(logic.getSymName(sym));
+
+            if (value == logic.getTerm_true()) {
+                values.push_back(Rf_ScalarLogical(TRUE));
+            } else if (value == logic.getTerm_false()) {
+                values.push_back(Rf_ScalarLogical(FALSE));
+            } else if (arith != nullptr && arith->isNumConst(value)) {
+                // A double loses exactness, and SMT rationals routinely are
+                // not representable in one. Report the double for arithmetic,
+                // and the exact value as an attribute for anyone who needs it.
+                opensmt::Number const & number = arith->getNumConst(value);
+                SEXP num = PROTECT(Rf_ScalarReal(number.get_d()));
+                Rf_setAttrib(num, Rf_install("exact"), Rf_mkString(number.get_str().c_str()));
+                values.push_back(num);
+                UNPROTECT(1);
+            } else {
+                // Anything else -- an uninterpreted sort's value, say --
+                // comes back as the solver's own printed form rather than
+                // being coerced into an R type it does not fit.
+                values.push_back(Rf_mkString(logic.printTerm(value).c_str()));
+            }
+        }
+
+        SEXP out = PROTECT(Rf_allocVector(VECSXP, static_cast<R_xlen_t>(values.size())));
+        SEXP nms = PROTECT(Rf_allocVector(STRSXP, static_cast<R_xlen_t>(names.size())));
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            SET_VECTOR_ELT(out, static_cast<R_xlen_t>(i), values[i]);
+            SET_STRING_ELT(nms, static_cast<R_xlen_t>(i), Rf_mkChar(names[i].c_str()));
+        }
+        Rf_setAttrib(out, R_NamesSymbol, nms);
+        UNPROTECT(2);
+        return out;
+    });
+}
+
 // Pigeonhole: n+1 pigeons into n holes, which is unsatisfiable and takes
 // resolution exponential time. Here so the tests have a solve long enough to
 // interrupt, and so term building beyond a single variable is exercised
@@ -169,7 +283,7 @@ extern "C" SEXP C_solver_assert_pigeonhole(SEXP xp, SEXP holes_) {
             throw std::invalid_argument("holes must be between 1 and 20");
         }
         int const pigeons = holes + 1;
-        opensmt::Logic & logic = *handle->logic;
+        opensmt::Logic & logic = handle->interp->theLogic();
 
         auto var = [&](int pigeon, int hole) {
             std::string const name = "p" + std::to_string(pigeon) + "_h" + std::to_string(hole);
@@ -180,13 +294,13 @@ extern "C" SEXP C_solver_assert_pigeonhole(SEXP xp, SEXP holes_) {
         for (int p = 0; p < pigeons; ++p) {
             opensmt::vec<opensmt::PTRef> someHole;
             for (int h = 0; h < holes; ++h) someHole.push(var(p, h));
-            handle->solver->insertFormula(logic.mkOr(std::move(someHole)));
+            handle->interp->getMainSolver().insertFormula(logic.mkOr(std::move(someHole)));
         }
         // No hole holds two pigeons.
         for (int h = 0; h < holes; ++h) {
             for (int p1 = 0; p1 < pigeons; ++p1) {
                 for (int p2 = p1 + 1; p2 < pigeons; ++p2) {
-                    handle->solver->insertFormula(
+                    handle->interp->getMainSolver().insertFormula(
                         logic.mkOr(logic.mkNot(var(p1, h)), logic.mkNot(var(p2, h))));
                 }
             }

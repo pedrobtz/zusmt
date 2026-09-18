@@ -16,6 +16,16 @@ namespace {
 
 // Line-buffered: Rprintf on every character would be slow and would interleave
 // badly with R's own output. Buffered text is flushed on newline and on sync.
+bool & capturing() {
+    static bool on = false;
+    return on;
+}
+
+std::string & capture_buffer() {
+    static std::string buffer;
+    return buffer;
+}
+
 class RStreamBuf : public std::streambuf {
 public:
     explicit RStreamBuf(bool to_stderr) : to_stderr_(to_stderr) {}
@@ -45,6 +55,11 @@ protected:
 private:
     void emit() {
         if (pending_.empty()) return;
+        if (capturing()) {
+            capture_buffer() += pending_;
+            pending_.clear();
+            return;
+        }
         // "%s" rather than passing the text as the format: solver output
         // contains user-supplied symbol names, which may contain '%'.
         if (to_stderr_) {
@@ -203,4 +218,20 @@ void zusmt::clear_interrupt_request() {
 void zusmt::arm_test_interrupt(int polls) {
     test_interrupt_countdown() = polls;
     interrupt_seen() = false;
+}
+
+void zusmt::begin_capture() {
+    capture_buffer().clear();
+    capturing() = true;
+}
+
+std::string zusmt::end_capture() {
+    // Flush whatever is buffered but unterminated: the solver's last line may
+    // have no trailing newline, and it is usually the interesting one.
+    zusmt::rout().flush();
+    zusmt::rerr().flush();
+    capturing() = false;
+    std::string out = capture_buffer();
+    capture_buffer().clear();
+    return out;
 }
