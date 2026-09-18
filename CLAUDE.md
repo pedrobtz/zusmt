@@ -29,6 +29,16 @@ SMT-LIB2 commands, not only assertions. Two things make that work and are easy t
   with `Rprintf` is *not* captured, which is why a patch rule routes the parser's own syntax errors
   through `zusmt::rerr()` instead.
 
+## Generated files that R CMD check will not catch
+
+`man/*.Rd` is generated from roxygen comments *and from `DESCRIPTION`* —
+`man/zusmt-package.Rd` carries the author and maintainer. Editing `DESCRIPTION` alone leaves the old
+value in the documentation that ships, and `R CMD check` does not compare the two, so CI stays green
+with the package contradicting itself. Run `devtools::document()` after touching `DESCRIPTION`,
+not only after touching roxygen blocks.
+
+`NAMESPACE` is generated the same way; `src/Makevars` and `src/Makevars.win` come from `configure`.
+
 ## Vendored sources
 
 `src/opensmt/` is generated. Never edit it by hand: `tools/vendor/verify` and the `vendor` workflow
