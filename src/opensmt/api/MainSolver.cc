@@ -222,7 +222,7 @@ void MainSolver::printCurrentAssertionsAsQuery() const {
         printCurrentAssertionsAsQuery(zusmt::rout());
     else {
         char * s_file_name;
-        int chars_written = asprintf(&s_file_name, "%s-%d.smt2", base_name, check_called);
+        int chars_written = zusmt::asprintf(&s_file_name, "%s-%d.smt2", base_name, check_called);
         (void)chars_written;
         std::ofstream stream;
         stream.open(s_file_name);

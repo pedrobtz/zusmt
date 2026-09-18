@@ -196,7 +196,12 @@ The last two are per-call-site rather than blanket rewrites, because `Interpret`
 `exit()` and 4 `fprintf` calls write to a real file rather than the console — a blanket rule would
 either not compile or send proof output to the console.
 
-Two portability problems only CI could find, both now rules in the same script:
+Windows took five CI round-trips, each a different assumption: no `<sys/resource.h>`, no
+`suseconds_t`, a 32-bit `long`, then `dprintf`/`asprintf` and a `size_t` signature mismatch.
+`tools/check-mingw.sh` now syntax-checks all 87 sources against real mingw headers locally, which
+finds that whole class in one pass — use it after a bump, before pushing.
+
+The portability problems CI found, all now rules in the same script:
 
 - **Windows has no `<sys/resource.h>`.** Upstream times itself with `getrusage()`, so the mingw build
   failed at the first file including `Timer.h`. [src/r_rusage.h](src/r_rusage.h) supplies it on

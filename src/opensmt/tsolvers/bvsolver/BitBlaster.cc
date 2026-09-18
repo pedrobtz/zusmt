@@ -175,7 +175,7 @@ char*
 BitBlaster::getName(const char* base) const
 {
     char* out;
-    int written = asprintf(&out, "%s%d", base, bs.size());
+    int written = zusmt::asprintf(&out, "%s%d", base, bs.size());
     assert(written >= 0); (void)written;
     return out;
 }
@@ -186,7 +186,7 @@ BitBlaster::getBVVars(const char* base, vec<PTRef>& vars, int width)
     vars.growTo(width);
     for (int i = 0; i < width; i++) {
         char* bit_name;
-        int written = asprintf(&bit_name, ".%s%02d_", base, i);
+        int written = zusmt::asprintf(&bit_name, ".%s%02d_", base, i);
         assert(written >= 0); (void)written;
         vars[i] = logic.mkBoolVar(getName(bit_name));
         free(bit_name);

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 #include "LABounds.h"
 
 #include <minisat/mtl/Map.h>
@@ -29,10 +30,10 @@ LABoundStore::printBound(LABoundRef br) const
 {
     char *str_out;
     char *v_str_lvr;
-    int written = asprintf(&v_str_lvr, "v%d", ba[br].getLVRef().x);
+    int written = zusmt::asprintf(&v_str_lvr, "v%d", ba[br].getLVRef().x);
     assert(written >= 0);
     char* v_str;
-    written = asprintf(&v_str, "%s", v_str_lvr);
+    written = zusmt::asprintf(&v_str, "%s", v_str_lvr);
     assert(written >= 0); (void)written;
     free(v_str_lvr);
     const Delta & d = ba[br].getValue();
@@ -41,13 +42,13 @@ LABoundStore::printBound(LABoundRef br) const
     Real const & s = d.D();
     BoundT type = ba[br].getType();
     if ((type == bound_l) && (s == 0))
-        written = asprintf(&str_out, "%s <= %s", r.get_str().c_str(), v_str);
+        written = zusmt::asprintf(&str_out, "%s <= %s", r.get_str().c_str(), v_str);
     if ((type == bound_l) && (s != 0))
-        written = asprintf(&str_out, "%s < %s", r.get_str().c_str(), v_str);
+        written = zusmt::asprintf(&str_out, "%s < %s", r.get_str().c_str(), v_str);
     if ((type == bound_u) && (s == 0))
-        written = asprintf(&str_out, "%s <= %s", v_str, r.get_str().c_str());
+        written = zusmt::asprintf(&str_out, "%s <= %s", v_str, r.get_str().c_str());
     if ((type == bound_u) && (s != 0))
-        written = asprintf(&str_out, "%s < %s", v_str, r.get_str().c_str());
+        written = zusmt::asprintf(&str_out, "%s < %s", v_str, r.get_str().c_str());
 
     assert(written >= 0); (void)written;
     free(v_str);
@@ -64,7 +65,7 @@ char* LABoundStore::printBounds(LVRef v) const
         LABoundRef br = var_bounds[i];
         char* tmp;
         char* tmp2 = printBound(br);
-        int written = asprintf(&tmp, "%s(%s) ", bounds_str, tmp2);
+        int written = zusmt::asprintf(&tmp, "%s(%s) ", bounds_str, tmp2);
         assert(written >= 0); (void)written;
         free(bounds_str);
         free(tmp2);

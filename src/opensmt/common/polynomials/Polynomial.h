@@ -186,7 +186,7 @@ void PolynomialT<VarType>::addTerm(VarType var, Real coeff) {
 }
 
 template<typename VarType>
-unsigned long PolynomialT<VarType>::size() const {
+std::size_t PolynomialT<VarType>::size() const {
     return poly.size();
 }
 

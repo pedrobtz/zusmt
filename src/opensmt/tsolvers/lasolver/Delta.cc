@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
  Author: Aliaksei Tsitovich <aliaksei.tsitovich@lu.unisi.ch>
  Roberto Bruttomesso <roberto.bruttomesso@unisi.ch>
@@ -49,7 +50,7 @@ void Delta::print(std::ostream & out) const {
 char * Delta::printValue() const {
     char * out;
     int written = -1;
-    written = asprintf(&out, "(%s | %s)",
+    written = zusmt::asprintf(&out, "(%s | %s)",
                        r.get_str().c_str(),
                        d.get_str().c_str());
     assert(written >= 0);

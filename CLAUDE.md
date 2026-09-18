@@ -38,6 +38,16 @@ BISON=/usr/local/opt/bison/bin/bison ./tools/vendor.sh   # macOS system bison is
 - checksums are taken last, over the patched tree, excluding `.o` files — R compiles in place, so a
   built tree carries objects inside `src/opensmt/`.
 
+**Check Windows before pushing.** mingw is LLP64 (`long` is 32 bits, unlike every other platform in
+the matrix) and lacks POSIX headers and functions upstream assumes. Porting v2.9.2 took five CI
+round-trips — a missing header, a missing typedef, an LLP64 cast, then `dprintf`/`asprintf` — before
+`tools/check-mingw.sh` existed to find the whole class at once:
+
+```sh
+brew install mingw-w64
+./tools/check-mingw.sh     # syntax-checks all 87 sources against Windows headers
+```
+
 Re-running on a clean checkout must leave `git status` clean — that is the reproducibility property
 the guard depends on. A PR that changes a file under `src/opensmt/` without changing
 `tools/vendor/manifest.tsv` and `tools/vendor/checksums.sha256` fails the `vendor` workflow.

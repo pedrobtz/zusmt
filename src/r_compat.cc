@@ -4,7 +4,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 #include <streambuf>
 #include <string>
@@ -98,4 +100,38 @@ int zusmt::pseudo_rand() {
 
 void zusmt::pseudo_srand(unsigned int seed) {
     rng_state() = (seed == 0u) ? 2463534242u : seed;
+}
+
+int zusmt::asprintf(char ** out, char const * fmt, ...) {
+    if (out == nullptr) return -1;
+    *out = nullptr;
+
+    va_list args;
+    va_start(args, fmt);
+    va_list measure;
+    va_copy(measure, args);
+    int const needed = std::vsnprintf(nullptr, 0, fmt, measure);
+    va_end(measure);
+
+    if (needed < 0) {
+        va_end(args);
+        return -1;
+    }
+
+    // malloc, not new: the vendored call sites free() what they get back.
+    char * buffer = static_cast<char *>(std::malloc(static_cast<std::size_t>(needed) + 1));
+    if (buffer == nullptr) {
+        va_end(args);
+        return -1;
+    }
+
+    int const written = std::vsnprintf(buffer, static_cast<std::size_t>(needed) + 1, fmt, args);
+    va_end(args);
+
+    if (written < 0) {
+        std::free(buffer);
+        return -1;
+    }
+    *out = buffer;
+    return written;
 }

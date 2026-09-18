@@ -108,7 +108,7 @@ echo "    stdout/stderr FILE* references:"
 #    standard C++20 and this package already compiles as C++20.
 patch_exact common/ReportUtils.h \
   's/#define reportf(format, args...) ( fflush(stdout), REprintf(format, ## args), fflush(stderr) )/#define reportf(format, ...) ( REprintf(format __VA_OPT__(,) __VA_ARGS__) )/' \
-  'reportf: drop fflush, and use __VA_OPT__ rather than GNU `, ## args`'
+  'reportf: drop fflush, and use __VA_OPT__ rather than the GNU comma-paste'
 patch_exact smtsolvers/CoreSMTSolver.cc \
   's|^\([[:space:]]*\)fflush(stderr);|\1/* fflush(stderr) dropped: output goes through REprintf */|' \
   'fflush(stderr) after a progress line'
@@ -167,11 +167,32 @@ patch_exact common/numbers/FastRational.h \
   '/static_assert(sizeof(long) == 8);/d; s|return mpq_class{static_cast<long>(num), static_cast<long>(den)};|return mpq_class{static_cast<long>(num), static_cast<unsigned long>(den)};|' \
   'getMpq(): denominator through unsigned long, not long'
 
-# 9. Make the shim visible. Prepending the include is more portable than a
+# 9. Functions that are POSIX or GNU rather than standard, and one signature
+#    that only mismatches under LLP64. All found by the Windows leg.
+echo "    POSIX/GNU functions absent on Windows:"
+#    dprintf() writes to a file descriptor, so it is both absent on mingw and
+#    a direct write to fd 2 that R forbids. Rule 2 did not catch it: the 'd'
+#    in front of printf is alphanumeric, which is exactly what stops that
+#    rule from mangling snprintf.
+rule 'dprintf(STDERR_FILENO -> REprintf' 'dprintf[[:space:]]*\([[:space:]]*STDERR_FILENO[[:space:]]*,' \
+  's/dprintf[[:space:]]*([[:space:]]*STDERR_FILENO[[:space:]]*,[[:space:]]*/REprintf(/g'
+#    asprintf() is a GNU extension. The shim implements it with vsnprintf and
+#    malloc, and is used on every platform so the call sites behave the same
+#    everywhere rather than only being fixed where they failed to compile.
+rule 'asprintf -> zusmt::asprintf' '(^|[^_:[:alnum:]])asprintf[[:space:]]*\(' \
+  's/\([^_:[:alnum:]]\)asprintf[[:space:]]*(/\1zusmt::asprintf(/g; s/^asprintf[[:space:]]*(/zusmt::asprintf(/g'
+#    size() is declared std::size_t and defined unsigned long. Those are the
+#    same type on LP64 and different on Win64, where the definition then
+#    matches no declaration.
+patch_exact common/polynomials/Polynomial.h \
+  's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
+  'size(): definition must say std::size_t, not unsigned long'
+
+# 10. Make the shim visible. Prepending the include is more portable than a
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0
-for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
+for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|asprintf)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
   grep -q '#include <r_compat.h>' "${f}" && continue
   printf '#include <r_compat.h>\n' > "${f}.patched"
   cat "${f}" >> "${f}.patched"
