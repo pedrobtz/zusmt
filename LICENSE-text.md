@@ -1,4 +1,4 @@
 # License
 
     YEAR: 2026
-    COPYRIGHT HOLDER: Pedro Botz
+    COPYRIGHT HOLDER: Pedro Baltazar

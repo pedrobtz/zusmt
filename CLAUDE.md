@@ -14,32 +14,48 @@ it to R. The R layer is a thin wrapper; nearly all of the work is in
 
 ## Current state
 
-Stages 1–5 of [roadmap.md](https://pedrobtz.github.io/zusmt/roadmap.md)
-are done. OpenSMT v2.9.2 is bundled, patched for R hosting, compiled on
-all seven CI legs, and reachable from R through external-pointer handles
-with finalizers. What does **not** exist yet is the public API — Stage
-6. Everything in
-[R/solver.R](https://pedrobtz.github.io/zusmt/R/solver.R) is internal
-scaffolding, as are `smoke_solve()` and
-[`smt_toolchain()`](https://pedrobtz.github.io/zusmt/reference/smt_toolchain.md).
+Stages 1–6 of [roadmap.md](https://pedrobtz.github.io/zusmt/roadmap.md)
+are done: the package has a working public API.
+[`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md),
+[`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md),
+[`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md),
+[`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md)
+and
+[`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md)
+take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind,
+gctorture, rchk, coverage) and Stage 8 (README, vignette) are next.
 
-Two rules govern
-[src/boundary.h](https://pedrobtz.github.io/zusmt/src/boundary.h) and
-everything that uses it, and they are the reason the code looks the way
-it does:
+The API is deliberately a front end to the solver’s own language:
+[`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
+accepts any SMT-LIB2 commands, not only assertions. Two things make that
+work and are easy to break:
 
-- **No C++ exception may reach R.** Every entry point wraps its body in
-  `zusmt::with_firewall()`.
-- **A pending interrupt is consumed by the poll that detects it**
-  (`R_ToplevelExec`), so `solver_check()` re-signals an `interrupt`
-  condition in R. Do not “simplify” that away by calling
-  `R_CheckUserInterrupt()` at the boundary and expecting it to fire — it
-  does not, and `tests/testthat/test-interrupt.R` pins why.
-- **No longjmp may cross a live C++ frame.** The firewall copies the
-  message into a plain buffer and lets every C++ object die before
-  calling `Rf_error()`; `R_CheckUserInterrupt()` is called only after
-  the firewall has returned. Interrupts are *polled* during a search,
-  never delivered into it.
+- **Results are read from the solver, not from its output.** `Interpret`
+  prints its answers; `Interpret::getMainSolver()` is public, so
+  [src/solver.cc](https://pedrobtz.github.io/zusmt/src/solver.cc) reads
+  status and model from there. `logic` and `user_declarations` are
+  protected and reached by subclassing `Interpret` in our own code —
+  deliberately not by patching the vendored header, so a bump does not
+  disturb it.
+- **Diagnostics are captured and raised as conditions.**
+  `zusmt::begin_capture()` redirects the shim’s streams into a buffer,
+  and `run_script()` turns anything containing `(error` — or a non-zero
+  parse status — into an exception the firewall converts to an R error.
+  Output written with `Rprintf` is *not* captured, which is why a patch
+  rule routes the parser’s own syntax errors through `zusmt::rerr()`
+  instead.
+
+## Generated files that R CMD check will not catch
+
+`man/*.Rd` is generated from roxygen comments *and from `DESCRIPTION`* —
+`man/zusmt-package.Rd` carries the author and maintainer. Editing
+`DESCRIPTION` alone leaves the old value in the documentation that
+ships, and `R CMD check` does not compare the two, so CI stays green
+with the package contradicting itself. Run `devtools::document()` after
+touching `DESCRIPTION`, not only after touching roxygen blocks.
+
+`NAMESPACE` is generated the same way; `src/Makevars` and
+`src/Makevars.win` come from `configure`.
 
 ## Vendored sources
 

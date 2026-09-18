@@ -15,11 +15,11 @@ Useful links:
 
 ## Author
 
-**Maintainer**: Pedro Botz <pedrobtz@gmail.com>
+**Maintainer**: Pedro Baltazar <pedrobtz@gmail.com>
 
 Authors:
 
-- Pedro Botz <pedrobtz@gmail.com>
+- Pedro Baltazar <pedrobtz@gmail.com>
 
 Other contributors:
 

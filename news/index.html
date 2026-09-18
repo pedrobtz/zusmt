@@ -34,7 +34,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="zusmt-0009000">zusmt 0.0.0.9000<a class="anchor" aria-label="anchor" href="#zusmt-0009000"></a></h2>
-<ul><li><p>Solver handles are external pointers with finalizers, every entry point runs behind one exception firewall, and a long search can be interrupted: the solver’s own <code>okContinue()</code> is asked about pending R interrupts, so the search unwinds through its destructors instead of being longjmped over.</p></li>
+<ul><li><p>Memory and UB checks (<code>sanitizers</code>, <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code>, <code>lto</code>) now run in CI.</p></li>
+<li><p>First public API: <code><a href="../reference/smt_solver.html">smt_solver()</a></code>, <code><a href="../reference/smt_assert.html">smt_assert()</a></code>, <code><a href="../reference/smt_check.html">smt_check()</a></code>, <code><a href="../reference/smt_model.html">smt_model()</a></code> and <code><a href="../reference/smt_release.html">smt_release()</a></code>. Problems are written in SMT-LIB2 and results come back as R values – a named list for models, with exact rationals attached to the doubles. Solver diagnostics are raised as R conditions rather than printed.</p></li>
+<li><p>Solver handles are external pointers with finalizers, every entry point runs behind one exception firewall, and a long search can be interrupted: the solver’s own <code>okContinue()</code> is asked about pending R interrupts, so the search unwinds through its destructors instead of being longjmped over.</p></li>
 <li><p>The bundled solver is now compiled and linked, and decides problems from R. <code>src/Makevars.in</code>’s object list is derived from upstream’s own CMakeLists by <code>tools/objects.sh</code>, and <code>tools/patches.sh</code> rewrites upstream’s console output, RNG and process-exit calls to things a package may do.</p></li>
 <li><p>Bundled OpenSMT v2.9.2 under <code>src/opensmt/</code> (238 files), imported by <code>tools/vendor.sh</code>. Nothing compiles it yet – that is the next step.</p></li>
 <li><p>Added <code><a href="../reference/smt_toolchain.html">smt_toolchain()</a></code>, a build-time probe reporting the C++20 compiler, GMP version and thread support the package was compiled against. This is Stage 1 of <code>roadmap.md</code>: it establishes that R’s toolchain can build what OpenSMT requires, ahead of vendoring the solver itself.</p></li>
@@ -44,7 +46,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Pedro Botz.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">

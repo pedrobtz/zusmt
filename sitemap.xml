@@ -7,6 +7,11 @@
 <url><loc>https://pedrobtz.github.io/zusmt/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/news/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/reference/index.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_assert.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_check.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_model.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_release.html</loc></url>
+<url><loc>https://pedrobtz.github.io/zusmt/reference/smt_solver.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/reference/smt_toolchain.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/reference/zusmt-package.html</loc></url>
 <url><loc>https://pedrobtz.github.io/zusmt/roadmap.html</loc></url>

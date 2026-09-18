@@ -150,8 +150,14 @@
 <td>Needs a pinned version for it to compare against</td>
 </tr><tr><td>
 <code>sanitizers</code>, <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code>, <code>lto</code> (<code>native-checks.yml</code>)</td>
-<td>5–7</td>
-<td>Want a real R/C++ boundary and a test suite to exercise it</td>
+<td><strong>adopted in Stage 6</strong></td>
+<td>Review pointed out the inversion: this is the only sibling package with a hand-written boundary, external pointers, manual <code>PROTECT</code>/<code>UNPROTECT</code> and a finalizer, and was the only one with none of these</td>
+</tr><tr><td>
+<code>nosuggests</code> and <code>nold</code> inputs to <code>r-cmd-check.yml</code>
+</td>
+<td>7</td>
+<td>
+<code>nosuggests</code> has something to catch once there are examples: the one <code>Suggests</code> is testthat, and <code>tests/testthat.R</code> calls <code><a href="https://testthat.r-lib.org" class="external-link">library(testthat)</a></code> at top level</td>
 </tr><tr><td>
 <code>coverage.yml</code> (<code>native: true</code>)</td>
 <td>7</td>
@@ -237,16 +243,24 @@
 <p>Exit: <strong>met</strong> — 26 tests, covering <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code> survival, collection of unreferenced handles, explicit release being idempotent rather than a double free, foreign external pointers rejected by tag, and a C++ exception arriving as an ordinary R condition with the session still usable.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-6--r-facing-api">Stage 6 — R-facing API<a class="anchor" aria-label="anchor" href="#stage-6--r-facing-api"></a></h2>
-<p>Per the Stage 0 decision. A plausible minimum: <code>smt_solver()</code>, <code>smt_assert()</code>, <code>smt_check()</code>, <code>smt_model()</code>, plus <code>print</code>/<code>format</code> methods. Decide error vs. value semantics for <code>unknown</code>, and how rationals come back to R (double, character, or <code>gmp::bigq</code>).</p>
-<p>Exit: the README example is real code that runs.</p>
+<h2 id="stage-6--r-facing-api--done-pr-5">Stage 6 — R-facing API — <strong>done</strong> (PR #5)<a class="anchor" aria-label="anchor" href="#stage-6--r-facing-api--done-pr-5"></a></h2>
+<p><strong>Decision: SMT-LIB2 text in, R values out.</strong> The objection to it — that <code>Interpret</code> <em>prints</em> its answers — turned out not to bind, because <code>Interpret::getMainSolver()</code> is public, so results are read from the solver rather than scraped from printed output. <code>Interpret</code> keeps <code>logic</code> and <code>user_declarations</code> protected, reached by subclassing it in our own code rather than patching the vendored header, so nothing here needs re-applying at the next bump.</p>
+<p><code><a href="reference/smt_assert.html">smt_assert()</a></code> accepts any SMT-LIB2 commands, not only assertions — <code>push</code>/<code>pop</code>, declarations and options all work — because a front end to the solver’s own language is more useful than a curated subset of it.</p>
+<p><strong>Rationals keep their exact form.</strong> A model value comes back as a double carrying an <code>"exact"</code> attribute with the solver’s own rational, since <code>1/3</code> is not representable as a double and silently rounding a solver’s answer is the wrong default.</p>
+<p><strong>Diagnostics became conditions, which took two fixes.</strong> Semantic errors reach the console through <code>notify_formatted</code>, so <code>zusmt::begin_capture()</code> collects that output and turns it into an R error. Parse errors went through <code>Rprintf</code>, which the capture cannot see, so they leaked to the console <em>and</em> produced a contentless R error — a patch rule now routes them through <code>zusmt::rerr()</code>.</p>
+<p><strong>A memory-safety bug found in review, and what it took to see it.</strong> The model reader collected values in a <code>std::vector&lt;SEXP&gt;</code>, which R’s collector cannot see, leaving every element unprotected from the moment it was stored until the list was built. The fix allocates the list first and stores each value straight into it.</p>
+<p>Worth recording how it behaved, because it shaped the test: under <code>gctorture2(1)</code> with three declarations it produced <em>correct results</em> — the freed nodes had not been reused yet. With sixty, the list came back holding a <code>CHARSXP</code> (“cannot have attributes on a CHARSXP”), which is collected memory handed back as a value. A latent use-after-free that a small test cannot see is exactly the argument for <code>rchk</code>, which names it statically rather than waiting for the allocation pattern that exposes it.</p>
+<p>Exit: <strong>met</strong> — 29 API tests, including <code>push</code>/<code>pop</code>, exact rationals, arity &gt; 0 omitted from models, both error paths, and the 60-declaration regression under <code>gctorture</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-7--tests-and-memory-hygiene">Stage 7 — Tests and memory hygiene<a class="anchor" aria-label="anchor" href="#stage-7--tests-and-memory-hygiene"></a></h2>
 <ul><li>
 <code>testthat</code> unit tests per logic (QF_UF, QF_LRA, QF_LIA, QF_AX), plus error paths and interrupts.</li>
 <li>Regression corpus of small SMT-LIB files under <code>inst/</code> (keep the package tarball small).</li>
-<li>ASAN/UBSAN and valgrind runs via <code>rhub::rhub_check()</code>; add a <code>--use-valgrind</code> note to CLAUDE.md.</li>
+<li>
+<strong>Re-enable the <code>sanitizers</code> leg</strong> in <code>.github/workflows/native-checks.yml</code>. It is parked, not dropped: <code>r-actions</code>’ <code>sanitizers.yml</code> sets <code>CC</code>/<code>CXX</code> to clang but not <code>CXX20</code>, so a C++20 package compiles with R’s configured g++ while carrying clang-only link flags, and every compile probe fails. Waiting on <code>CXX17</code>/<code>CXX20</code> (and their <code>*STD</code> variants) being set there. UBSan covers ground valgrind does not — signed overflow, misaligned pointers, invalid casts — and this package has already shipped one memory bug to review, so it is worth having back.</li>
+<li>
+<code>valgrind</code>, <code>gctorture</code>, <code>rchk</code> and <code>lto</code> already run via <code>native-checks.yml</code> (adopted in Stage 6).</li>
 <li>Guard check time: keep examples and tests fast; CRAN’s limit is the practical constraint.</li>
 </ul><p>Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just the happy path.</p>
 </div>
@@ -260,6 +274,8 @@
 <div class="section level2">
 <h2 id="stage-9--cran-submission">Stage 9 — CRAN submission<a class="anchor" aria-label="anchor" href="#stage-9--cran-submission"></a></h2>
 <ul><li>Run the <code>cran-extrachecks</code> skill.</li>
+<li>
+<strong>Installed size is ~45 MB</strong>, almost all <code>libs/</code>. That is an INFO in the r-hub container and a NOTE on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the explanation belongs in <code>cran-comments.md</code> before a reviewer asks, not after.</li>
 <li>Verify: <code>SystemRequirements</code> accurate, <code>LICENSE.note</code> present, copyright holders credited, install time and tarball size acceptable, no compiler warnings on CRAN’s flavours, <code>--as-cran</code> clean including the “libs size” note.</li>
 <li>Expect a reviewer question about the bundled third-party sources; have the provenance answer ready.</li>
 </ul></div>
@@ -279,7 +295,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Pedro Botz.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">

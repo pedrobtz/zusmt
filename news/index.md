@@ -2,6 +2,20 @@
 
 ## zusmt 0.0.0.9000
 
+- Memory and UB checks (`sanitizers`, `valgrind`, `gctorture`, `rchk`,
+  `lto`) now run in CI.
+
+- First public API:
+  [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md),
+  [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md),
+  [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md),
+  [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md)
+  and
+  [`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md).
+  Problems are written in SMT-LIB2 and results come back as R values – a
+  named list for models, with exact rationals attached to the doubles.
+  Solver diagnostics are raised as R conditions rather than printed.
+
 - Solver handles are external pointers with finalizers, every entry
   point runs behind one exception firewall, and a long search can be
   interrupted: the solver’s own `okContinue()` is asked about pending R

@@ -41,15 +41,18 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Stages 1–5 of <a href="roadmap.html">roadmap.md</a> are done. OpenSMT v2.9.2 is bundled, patched for R hosting, compiled on all seven CI legs, and reachable from R through external-pointer handles with finalizers. What does <strong>not</strong> exist yet is the public API — Stage 6. Everything in <a href="R/solver.R">R/solver.R</a> is internal scaffolding, as are <code>smoke_solve()</code> and <code><a href="reference/smt_toolchain.html">smt_toolchain()</a></code>.</p>
-<p>Two rules govern <a href="src/boundary.h">src/boundary.h</a> and everything that uses it, and they are the reason the code looks the way it does:</p>
+<p>Stages 1–6 of <a href="roadmap.html">roadmap.md</a> are done: the package has a working public API. <code><a href="reference/smt_solver.html">smt_solver()</a></code>, <code><a href="reference/smt_assert.html">smt_assert()</a></code>, <code><a href="reference/smt_check.html">smt_check()</a></code>, <code><a href="reference/smt_model.html">smt_model()</a></code> and <code><a href="reference/smt_release.html">smt_release()</a></code> take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README, vignette) are next.</p>
+<p>The API is deliberately a front end to the solver’s own language: <code><a href="reference/smt_assert.html">smt_assert()</a></code> accepts any SMT-LIB2 commands, not only assertions. Two things make that work and are easy to break:</p>
 <ul><li>
-<strong>No C++ exception may reach R.</strong> Every entry point wraps its body in <code>zusmt::with_firewall()</code>.</li>
+<strong>Results are read from the solver, not from its output.</strong> <code>Interpret</code> prints its answers; <code>Interpret::getMainSolver()</code> is public, so <a href="src/solver.cc">src/solver.cc</a> reads status and model from there. <code>logic</code> and <code>user_declarations</code> are protected and reached by subclassing <code>Interpret</code> in our own code — deliberately not by patching the vendored header, so a bump does not disturb it.</li>
 <li>
-<strong>A pending interrupt is consumed by the poll that detects it</strong> (<code>R_ToplevelExec</code>), so <code>solver_check()</code> re-signals an <code>interrupt</code> condition in R. Do not “simplify” that away by calling <code>R_CheckUserInterrupt()</code> at the boundary and expecting it to fire — it does not, and <code>tests/testthat/test-interrupt.R</code> pins why.</li>
-<li>
-<strong>No longjmp may cross a live C++ frame.</strong> The firewall copies the message into a plain buffer and lets every C++ object die before calling <code>Rf_error()</code>; <code>R_CheckUserInterrupt()</code> is called only after the firewall has returned. Interrupts are <em>polled</em> during a search, never delivered into it.</li>
+<strong>Diagnostics are captured and raised as conditions.</strong> <code>zusmt::begin_capture()</code> redirects the shim’s streams into a buffer, and <code>run_script()</code> turns anything containing <code>(error</code> — or a non-zero parse status — into an exception the firewall converts to an R error. Output written with <code>Rprintf</code> is <em>not</em> captured, which is why a patch rule routes the parser’s own syntax errors through <code>zusmt::rerr()</code> instead.</li>
 </ul></div>
+<div class="section level2">
+<h2 id="generated-files-that-r-cmd-check-will-not-catch">Generated files that R CMD check will not catch<a class="anchor" aria-label="anchor" href="#generated-files-that-r-cmd-check-will-not-catch"></a></h2>
+<p><code>man/*.Rd</code> is generated from roxygen comments <em>and from <code>DESCRIPTION</code></em> — <code>man/zusmt-package.Rd</code> carries the author and maintainer. Editing <code>DESCRIPTION</code> alone leaves the old value in the documentation that ships, and <code>R CMD check</code> does not compare the two, so CI stays green with the package contradicting itself. Run <code>devtools::document()</code> after touching <code>DESCRIPTION</code>, not only after touching roxygen blocks.</p>
+<p><code>NAMESPACE</code> is generated the same way; <code>src/Makevars</code> and <code>src/Makevars.win</code> come from <code>configure</code>.</p>
+</div>
 <div class="section level2">
 <h2 id="vendored-sources">Vendored sources<a class="anchor" aria-label="anchor" href="#vendored-sources"></a></h2>
 <p><code>src/opensmt/</code> is generated. Never edit it by hand: <code>tools/vendor/verify</code> and the <code>vendor</code> workflow both exist to catch exactly that, and a hand edit is lost at the next bump.</p>
@@ -111,7 +114,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Pedro Botz.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">
