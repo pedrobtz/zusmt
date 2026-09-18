@@ -333,13 +333,21 @@ Exit: **met** — 117 tests; `valgrind`, `gctorture`, `rchk` and `lto` green in 
 both R and native. The `sanitizers` leg remains parked on the `r-actions` `CXX20` fix, which is the
 one part of this stage that cannot be finished from this repository.
 
-## Stage 8 — Documentation
+## Stage 8 — Documentation — **done** (PR #7)
 
-- Roxygen for every exported function, runnable `@examples`.
-- README rewritten around a real example; `pkgdown` reference index in `_pkgdown.yml`.
-- A vignette showing an end-to-end problem, and a `NEWS.md` entry recording the vendored OpenSMT
-  version.
-- Document the vendoring process itself (how to bump OpenSMT) — `.github/CONTRIBUTING.md` or CLAUDE.md.
+Every example in the README and the vignette was run before it was written down; the outputs are
+what the package actually printed, not what it ought to print. The vignette executes at build time,
+so a change that breaks an example breaks the build rather than leaving a document quietly claiming
+something false.
+
+- README: installation, a scheduling problem, exact rationals, the logics, and what is bundled.
+- `vignette("zusmt")`: what an SMT solver is for, sat and unsat, why `2x = 3` differs between
+  `QF_LIA` and `QF_LRA`, uninterpreted functions, arrays, `push`/`pop`, and errors as conditions.
+- `_pkgdown.yml` reference index — `pkgdown::check_pkgdown()` clean.
+- `.github/CONTRIBUTING.md`: how to bump the bundled solver, why the patches exist, and the Windows
+  check that six CI round trips paid for.
+
+Exit: **met** — check clean with no notes, tarball 496K with the vignette.
 
 ## Stage 9 — CRAN submission
 

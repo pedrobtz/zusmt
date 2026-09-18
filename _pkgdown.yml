@@ -2,3 +2,24 @@ url: https://pedrobtz.github.io/zusmt/
 template:
   bootstrap: 5
 
+reference:
+- title: Solving
+  desc: >
+    Create a solver, give it a problem in SMT-LIB2, and ask for an answer.
+  contents:
+  - smt_solver
+  - smt_assert
+  - smt_check
+  - smt_model
+
+- title: Housekeeping
+  desc: >
+    What the package supports, and how to free a solver before R does.
+  contents:
+  - smt_logics
+  - smt_release
+  - smt_toolchain
+
+- title: internal
+  contents:
+  - zusmt-package

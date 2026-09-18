@@ -1,5 +1,10 @@
 # zusmt 0.0.0.9000
 
+* Documentation: a README and a `vignette("zusmt")` built around problems that
+  run, a pkgdown reference index, and `.github/CONTRIBUTING.md` covering how to
+  bump the bundled solver.
+* Bundles OpenSMT v2.9.2 (commit `34bc1b8`, 2025-06-16).
+
 * New `smt_logics()` reports the supported logics, read from the single
   definition in the C++ layer.
 * All eight supported logics are now tested with both a satisfiable and an
