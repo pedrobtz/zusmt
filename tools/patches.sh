@@ -191,7 +191,25 @@ patch_exact common/polynomials/Polynomial.h \
   's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
   'size(): definition must say std::size_t, not unsigned long'
 
-# 9. Functions that are POSIX or GNU rather than standard, and one signature
+# 9. The only rule here that changes what the solver DOES, rather than what it
+#    can compile against or where it writes. Everything above keeps upstream's
+#    behaviour and makes it portable or R-safe; this one gives the search a
+#    reason to stop that upstream never had.
+echo "    interruptibility:"
+#    okContinue() is the solver's own
+#    termination check, called from the innermost loop, and it already ends
+#    the search by returning false -- unwinding normally through every
+#    destructor. Asking about a pending R interrupt in the same place gets
+#    interruptibility with upstream's own control flow, rather than a longjmp
+#    across C++ frames, which would skip those destructors and leak the
+#    solver's heap. check() then returns s_Undef, and the boundary raises the
+#    interrupt in R once no C++ frame is left.
+patch_exact smtsolvers/CoreSMTSolver.cc \
+  's|^    return not opensmt::stop;|    return not opensmt::stop and not zusmt::interrupt_requested();|' \
+  'okContinue(): also stop when R has a pending interrupt'
+
+
+# 10. Functions that are POSIX or GNU rather than standard, and one signature
 #    that only mismatches under LLP64. All found by the Windows leg.
 echo "    POSIX/GNU functions absent on Windows:"
 #    dprintf() writes to a file descriptor, so it is both absent on mingw and
@@ -210,11 +228,11 @@ rule 'dprintf(STDERR_FILENO -> REprintf' 'dprintf[[:space:]]*\([[:space:]]*STDER
 rule 'asprintf -> zusmt::alloc_printf' '(^|[^_:[:alnum:]])asprintf[[:space:]]*\(' \
   's/\([^_:[:alnum:]]\)asprintf[[:space:]]*(/\1zusmt::alloc_printf(/g; s/^asprintf[[:space:]]*(/zusmt::alloc_printf(/g'
 
-# 10. Make the shim visible. Prepending the include is more portable than a
+# 11. Make the shim visible. Prepending the include is more portable than a
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0
-for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_printf)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
+for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_printf|interrupt_requested)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
   grep -q '#include <r_compat.h>' "${f}" && continue
   printf '#include <r_compat.h>\n' > "${f}.patched"
   cat "${f}" >> "${f}.patched"

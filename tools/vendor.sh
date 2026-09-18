@@ -100,7 +100,8 @@ mkdir -p "${meta}"
   printf 'commit\t%s\n' "${sha}"
   printf 'committed\t%s\n' "${date}"
   printf 'pruned\t%s\n' "${PRUNE}"
-  printf 'patched\ttools/patches.sh (console output, RNG, process exit)\n'
+  printf 'patched\tR hosting (console output, RNG, process exit), portability (Windows headers, LLP64, POSIX/GNU functions, libgmpxx ABI), and interruptibility (the search loop stops on a pending R interrupt)\n'
+  printf 'patch_rules\ttools/patches.sh sha256=%s\n' "$(shasum -a 256 "${here}/tools/patches.sh" | cut -d' ' -f1)"
   printf 'generated\tparsers/smt2new/smt2newparser.cc, smt2newparser.hh, smt2newlexer.cc\n'
   printf 'bison\t%s\n' "$("${BISON}" --version | head -1)"
   printf 'flex\t%s\n' "$("${FLEX}" --version)"

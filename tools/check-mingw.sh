@@ -46,8 +46,15 @@ mode="syntax"
 [ "${1:-}" = "--link" ] && mode="link"
 
 cd "${here}/src"
-sources=$(sed -n '/^OPENSMT_OBJECTS/,/^# <<</p' Makevars.in |
+# The package's own boundary sources as well as the vendored tree: they are
+# equally subject to Windows headers and a 32-bit long, and the object list is
+# the single place that says what the package actually builds.
+own=$(grep -E '^OBJECTS *=' Makevars.in |
+  sed 's/^OBJECTS *=//; s/[$][(]OPENSMT_OBJECTS[)]//' |
+  tr ' ' '\n' | grep -E '\.o$' | sed 's/\.o$/.cc/')
+vendored=$(sed -n '/^OPENSMT_OBJECTS/,/^# <<</p' Makevars.in |
   grep -oE 'opensmt/[A-Za-z0-9_/.+-]+\.o' | sed 's/\.o$/.cc/')
+sources=$(printf '%s\n%s\n' "${own}" "${vendored}")
 
 echo "==> $(printf '%s\n' "${sources}" | wc -l | tr -d ' ') sources against $(${CXX} --version | head -1)"
 

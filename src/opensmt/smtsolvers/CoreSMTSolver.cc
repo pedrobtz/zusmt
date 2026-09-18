@@ -1350,7 +1350,7 @@ void CoreSMTSolver::popBacktrackPoint()
 
 bool CoreSMTSolver::okContinue() const
 {
-    return not opensmt::stop;
+    return not opensmt::stop and not zusmt::interrupt_requested();
 }
 
 void CoreSMTSolver::learntSizeAdjust() {

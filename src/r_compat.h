@@ -50,6 +50,31 @@ std::ostream & rerr();
 // call sites have one behaviour everywhere.
 int alloc_printf(char ** out, char const * fmt, ...) ZUSMT_PRINTF_FMT(2, 3);
 
+// Interrupt polling for the solver's search loop.
+//
+// R delivers an interrupt by longjmp, which must never cross a C++ frame:
+// destructors would be skipped and the solver's heap left behind. So the
+// search loop asks this instead. interrupt_requested() checks for a *pending*
+// interrupt without delivering it (R_ToplevelExec catches the longjmp), and
+// tools/patches.sh wires it into CoreSMTSolver::okContinue(), so a request
+// ends the search the same way upstream's own stop flag does -- by unwinding
+// normally, through every destructor.
+//
+// The boundary then calls R_CheckUserInterrupt() once no C++ frame is left,
+// which is what actually raises the condition in R.
+bool interrupt_requested();
+
+// Test hook. Makes the next solve behave as though the user pressed Ctrl-C
+// after `polls` polls of the search loop, so the wiring -- okContinue()
+// stopping the search, the search unwinding, the boundary reporting it -- can
+// be tested deterministically and on every platform. It does not exercise
+// R_ToplevelExec itself; nothing in a test can press Ctrl-C portably.
+void arm_test_interrupt(int polls);
+
+// True when a poll during the last solve saw a pending interrupt.
+bool interrupt_was_requested();
+void clear_interrupt_request();
+
 // Replaces rand()/srand(). Self-contained xorshift rather than R's RNG: these
 // call sites are heuristic tie-breaks inside the solver, and reaching into
 // R's RNG stream from solver internals would both need GetRNGstate/PutRNGstate
