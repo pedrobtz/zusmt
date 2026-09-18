@@ -49,6 +49,13 @@
 <strong>Diagnostics are captured and raised as conditions.</strong> <code>zusmt::begin_capture()</code> redirects the shim’s streams into a buffer, and <code>run_script()</code> turns anything containing <code>(error</code> — or a non-zero parse status — into an exception the firewall converts to an R error. Output written with <code>Rprintf</code> is <em>not</em> captured, which is why a patch rule routes the parser’s own syntax errors through <code>zusmt::rerr()</code> instead.</li>
 </ul></div>
 <div class="section level2">
+<h2 id="adding-a-regression-case">Adding a regression case<a class="anchor" aria-label="anchor" href="#adding-a-regression-case"></a></h2>
+<p>Drop a <code>.smt2</code> file in <code>inst/smt2/</code> with two header comments; <code>test-corpus.R</code> picks it up with no edit, and fails if either header is missing or malformed.</p>
+<pre><code>; logic: QF_LIA
+; expect: unsat</code></pre>
+<p>The supported logics are defined <strong>once</strong>, in <code>kSupportedLogics[]</code> in <a href="src/solver.cc">src/solver.cc</a>. <code><a href="reference/smt_logics.html">smt_logics()</a></code> reads that array, and the documentation, the corpus header check and <code>test-logics.R</code> all derive from it — so adding a logic to the array without a sat and an unsat probe fails the suite. Do not restate the list anywhere; a second copy agreeing with a third is a tautology, not a check.</p>
+</div>
+<div class="section level2">
 <h2 id="generated-files-that-r-cmd-check-will-not-catch">Generated files that R CMD check will not catch<a class="anchor" aria-label="anchor" href="#generated-files-that-r-cmd-check-will-not-catch"></a></h2>
 <p><code>man/*.Rd</code> is generated from roxygen comments <em>and from <code>DESCRIPTION</code></em> — <code>man/zusmt-package.Rd</code> carries the author and maintainer. Editing <code>DESCRIPTION</code> alone leaves the old value in the documentation that ships, and <code>R CMD check</code> does not compare the two, so CI stays green with the package contradicting itself. Run <code>devtools::document()</code> after touching <code>DESCRIPTION</code>, not only after touching roxygen blocks.</p>
 <p><code>NAMESPACE</code> is generated the same way; <code>src/Makevars</code> and <code>src/Makevars.win</code> come from <code>configure</code>.</p>
@@ -56,9 +63,9 @@
 <div class="section level2">
 <h2 id="vendored-sources">Vendored sources<a class="anchor" aria-label="anchor" href="#vendored-sources"></a></h2>
 <p><code>src/opensmt/</code> is generated. Never edit it by hand: <code>tools/vendor/verify</code> and the <code>vendor</code> workflow both exist to catch exactly that, and a hand edit is lost at the next bump.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># bump: edit OPENSMT_VERSION in tools/vendor.sh, then</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="va">BISON</span><span class="op">=</span>/usr/local/opt/bison/bin/bison <span class="ex">./tools/vendor.sh</span>   <span class="co"># macOS system bison is 2.3; upstream needs &gt;= 3.0</span></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="ex">./tools/vendor/verify</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># bump: edit OPENSMT_VERSION in tools/vendor.sh, then</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="va">BISON</span><span class="op">=</span>/usr/local/opt/bison/bin/bison <span class="ex">./tools/vendor.sh</span>   <span class="co"># macOS system bison is 2.3; upstream needs &gt;= 3.0</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="ex">./tools/vendor/verify</span></span></code></pre></div>
 <p><code>tools/vendor.sh</code> runs three steps after the import, and each matters:</p>
 <ul><li>
 <code>tools/patches.sh</code> rewrites what R forbids — console writes, the system RNG, <code>exit</code>/<code>abort</code> — onto the shim in <a href="src/r_compat.h">src/r_compat.h</a>. Every rule asserts it changed something, so a bump that moves a call site fails the re-vendor rather than silently leaving it.</li>
@@ -66,15 +73,15 @@
 <code>tools/objects.sh</code> regenerates the object list in <code>src/Makevars.in</code> <strong>from upstream’s CMakeLists.txt files</strong>, not from <code>find</code>: v2.9.2 ships four <code>.cc</code> files it does not build, and they do not compile.</li>
 <li>checksums are taken last, over the patched tree, excluding <code>.o</code> files — R compiles in place, so a built tree carries objects inside <code>src/opensmt/</code>.</li>
 </ul><p><strong>Check Windows before pushing.</strong> mingw is LLP64 (<code>long</code> is 32 bits, unlike every other platform in the matrix) and lacks POSIX headers and functions upstream assumes. Porting v2.9.2 took five CI round-trips — a missing header, a missing typedef, an LLP64 cast, then <code>dprintf</code>/<code>asprintf</code> — before <code>tools/check-mingw.sh</code> existed to find the whole class at once:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">brew</span> install mingw-w64</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">./tools/check-mingw.sh</span>            <span class="co"># compile errors: missing headers, LLP64 widths, absent functions</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="ex">./tools/check-mingw.sh</span> <span class="at">--link</span>     <span class="co"># also links the objects: duplicate definitions, e.g. class-scope thread_local</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">brew</span> install mingw-w64</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="ex">./tools/check-mingw.sh</span>            <span class="co"># compile errors: missing headers, LLP64 widths, absent functions</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="ex">./tools/check-mingw.sh</span> <span class="at">--link</span>     <span class="co"># also links the objects: duplicate definitions, e.g. class-scope thread_local</span></span></code></pre></div>
 <p><code>--link</code> is slower and exists because the compile stage cannot see link failures: a class-scope <code>thread_local</code> of non-trivial type compiles everywhere and links nowhere on mingw, which cost a round trip of its own.</p>
 <p>Re-running on a clean checkout must leave <code>git status</code> clean — that is the reproducibility property the guard depends on. A PR that changes a file under <code>src/opensmt/</code> without changing <code>tools/vendor/manifest.tsv</code> and <code>tools/vendor/checksums.sha256</code> fails the <code>vendor</code> workflow.</p>
 </div>
 <div class="section level2">
 <h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">load_all</span><span class="op">(</span><span class="op">)</span>                    <span class="co"># compile src/ + load; the main dev loop</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span>                    <span class="co"># regenerate NAMESPACE + man/ from roxygen</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>                        <span class="co"># run all tests</span></span>

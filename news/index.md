@@ -2,6 +2,15 @@
 
 ## zusmt 0.0.0.9000
 
+- New
+  [`smt_logics()`](https://pedrobtz.github.io/zusmt/reference/smt_logics.md)
+  reports the supported logics, read from the single definition in the
+  C++ layer.
+
+- All eight supported logics are now tested with both a satisfiable and
+  an unsatisfiable problem, and a regression corpus of SMT-LIB files
+  ships in `inst/smt2/`. Coverage, `nosuggests` and `nold` run in CI.
+
 - Memory and UB checks (`sanitizers`, `valgrind`, `gctorture`, `rchk`,
   `lto`) now run in CI.
 

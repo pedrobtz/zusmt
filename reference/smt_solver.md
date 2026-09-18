@@ -16,10 +16,11 @@ smt_solver(logic = "QF_UF")
 
 - logic:
 
-  An SMT-LIB logic name. One of `"QF_UF"` (uninterpreted functions),
-  `"QF_LIA"` / `"QF_LRA"` (linear integer / real arithmetic),
-  `"QF_UFLIA"`, `"QF_UFLRA"`, `"QF_IDL"`, `"QF_RDL"` or `"QF_AX"`
-  (arrays).
+  An SMT-LIB logic name;
+  [`smt_logics()`](https://pedrobtz.github.io/zusmt/reference/smt_logics.md)
+  returns the ones this package supports. They cover uninterpreted
+  functions, linear integer and real arithmetic, their combinations,
+  difference logic and arrays.
 
 ## Value
 

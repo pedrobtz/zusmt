@@ -376,7 +376,7 @@ Exit: **met** — 29 API tests, including `push`/`pop`, exact rationals,
 arity \> 0 omitted from models, both error paths, and the 60-declaration
 regression under `gctorture`.
 
-## Stage 7 — Tests and memory hygiene
+## Stage 7 — Tests and memory hygiene — **done** (PR \#6)
 
 - `testthat` unit tests per logic (QF_UF, QF_LRA, QF_LIA, QF_AX), plus
   error paths and interrupts.
@@ -396,8 +396,42 @@ regression under `gctorture`.
 - Guard check time: keep examples and tests fast; CRAN’s limit is the
   practical constraint.
 
-Exit: clean sanitizer runs; tests meaningfully exercise the boundary,
-not just the happy path.
+**The gap worth naming: eight logics were advertised, three were
+tested.** `check_logic_supported()` and
+[`?smt_solver`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md)
+both listed eight, and nothing checked that five of them solved anything
+— an accepted logic name and a working one are different claims. All
+eight are now exercised with a sat *and* an unsat problem each, and a
+second test asserts that the probe list equals the documented list, so
+adding a ninth logic without evidence fails.
+
+**The corpus is self-describing.** Each file in `inst/smt2/` carries
+`; logic:` and `; expect:` headers, so a regression case is one new file
+and no edit to the test — and a file with a missing or malformed header
+fails rather than being silently skipped. The cases are chosen to
+exercise different machinery: congruence closure, an integer-only
+infeasibility (`2x = 3`, which is sat in QF_LRA), a difference-logic
+negative cycle, array store/select, and a UF/arithmetic combination.
+
+**One source of truth for the logics.** The first version of the
+list-agreement test compared two hand-written vectors *in the same
+file*, which could never fail: the list existed in five places (the C++
+chain, the Rd, the probes, the test’s copy, the corpus header check). It
+is now one array in `src/solver.cc`, read by
+[`smt_logics()`](https://pedrobtz.github.io/zusmt/reference/smt_logics.md),
+with everything else derived. Verified by adding a ninth logic to the
+array and watching the suite go red.
+
+**Check flavours**: `nosuggests` and `nold` are on. The first needed a
+fix to `tests/testthat.R` — testthat is the only `Suggests`, and the
+standard scaffold calls
+[`library(testthat)`](https://testthat.r-lib.org) at top level, which
+errors on precisely that flavour.
+
+Exit: **met** — 117 tests; `valgrind`, `gctorture`, `rchk` and `lto`
+green in CI; coverage reporting both R and native. The `sanitizers` leg
+remains parked on the `r-actions` `CXX20` fix, which is the one part of
+this stage that cannot be finished from this repository.
 
 ## Stage 8 — Documentation
 

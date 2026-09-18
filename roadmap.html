@@ -253,7 +253,7 @@
 <p>Exit: <strong>met</strong> — 29 API tests, including <code>push</code>/<code>pop</code>, exact rationals, arity &gt; 0 omitted from models, both error paths, and the 60-declaration regression under <code>gctorture</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-7--tests-and-memory-hygiene">Stage 7 — Tests and memory hygiene<a class="anchor" aria-label="anchor" href="#stage-7--tests-and-memory-hygiene"></a></h2>
+<h2 id="stage-7--tests-and-memory-hygiene--done-pr-6">Stage 7 — Tests and memory hygiene — <strong>done</strong> (PR #6)<a class="anchor" aria-label="anchor" href="#stage-7--tests-and-memory-hygiene--done-pr-6"></a></h2>
 <ul><li>
 <code>testthat</code> unit tests per logic (QF_UF, QF_LRA, QF_LIA, QF_AX), plus error paths and interrupts.</li>
 <li>Regression corpus of small SMT-LIB files under <code>inst/</code> (keep the package tarball small).</li>
@@ -262,7 +262,11 @@
 <li>
 <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code> and <code>lto</code> already run via <code>native-checks.yml</code> (adopted in Stage 6).</li>
 <li>Guard check time: keep examples and tests fast; CRAN’s limit is the practical constraint.</li>
-</ul><p>Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just the happy path.</p>
+</ul><p><strong>The gap worth naming: eight logics were advertised, three were tested.</strong> <code>check_logic_supported()</code> and <code><a href="reference/smt_solver.html">?smt_solver</a></code> both listed eight, and nothing checked that five of them solved anything — an accepted logic name and a working one are different claims. All eight are now exercised with a sat <em>and</em> an unsat problem each, and a second test asserts that the probe list equals the documented list, so adding a ninth logic without evidence fails.</p>
+<p><strong>The corpus is self-describing.</strong> Each file in <code>inst/smt2/</code> carries <code>; logic:</code> and <code>; expect:</code> headers, so a regression case is one new file and no edit to the test — and a file with a missing or malformed header fails rather than being silently skipped. The cases are chosen to exercise different machinery: congruence closure, an integer-only infeasibility (<code>2x = 3</code>, which is sat in QF_LRA), a difference-logic negative cycle, array store/select, and a UF/arithmetic combination.</p>
+<p><strong>One source of truth for the logics.</strong> The first version of the list-agreement test compared two hand-written vectors <em>in the same file</em>, which could never fail: the list existed in five places (the C++ chain, the Rd, the probes, the test’s copy, the corpus header check). It is now one array in <code>src/solver.cc</code>, read by <code><a href="reference/smt_logics.html">smt_logics()</a></code>, with everything else derived. Verified by adding a ninth logic to the array and watching the suite go red.</p>
+<p><strong>Check flavours</strong>: <code>nosuggests</code> and <code>nold</code> are on. The first needed a fix to <code>tests/testthat.R</code> — testthat is the only <code>Suggests</code>, and the standard scaffold calls <code><a href="https://testthat.r-lib.org" class="external-link">library(testthat)</a></code> at top level, which errors on precisely that flavour.</p>
+<p>Exit: <strong>met</strong> — 117 tests; <code>valgrind</code>, <code>gctorture</code>, <code>rchk</code> and <code>lto</code> green in CI; coverage reporting both R and native. The <code>sanitizers</code> leg remains parked on the <code>r-actions</code> <code>CXX20</code> fix, which is the one part of this stage that cannot be finished from this repository.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-8--documentation">Stage 8 — Documentation<a class="anchor" aria-label="anchor" href="#stage-8--documentation"></a></h2>

@@ -45,6 +45,24 @@ work and are easy to break:
   rule routes the parser’s own syntax errors through `zusmt::rerr()`
   instead.
 
+## Adding a regression case
+
+Drop a `.smt2` file in `inst/smt2/` with two header comments;
+`test-corpus.R` picks it up with no edit, and fails if either header is
+missing or malformed.
+
+    ; logic: QF_LIA
+    ; expect: unsat
+
+The supported logics are defined **once**, in `kSupportedLogics[]` in
+[src/solver.cc](https://pedrobtz.github.io/zusmt/src/solver.cc).
+[`smt_logics()`](https://pedrobtz.github.io/zusmt/reference/smt_logics.md)
+reads that array, and the documentation, the corpus header check and
+`test-logics.R` all derive from it — so adding a logic to the array
+without a sat and an unsat probe fails the suite. Do not restate the
+list anywhere; a second copy agreeing with a third is a tautology, not a
+check.
+
 ## Generated files that R CMD check will not catch
 
 `man/*.Rd` is generated from roxygen comments *and from `DESCRIPTION`* —
