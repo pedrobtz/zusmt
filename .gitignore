@@ -4,3 +4,5 @@ src/Makevars.win
 conftest*
 src/conftest*
 conftest.dSYM
+/doc/
+/Meta/

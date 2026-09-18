@@ -14,8 +14,11 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests: 
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+VignetteBuilder: knitr
 URL: https://pedrobtz.github.io/zusmt/
 BugReports: https://github.com/pedrobtz/zusmt/issues
 SystemRequirements: GMP (>= 5.0.0), C++20

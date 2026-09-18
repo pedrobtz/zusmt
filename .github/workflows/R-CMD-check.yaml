@@ -15,13 +15,29 @@ jobs:
   R-CMD-check:
     uses: pedrobtz/r-actions/.github/workflows/r-cmd-check.yml@v1
     with:
-      # Two further CRAN flavours, both of which this package has something to
-      # fail on. nosuggests: testthat is the only Suggests and tests/testthat.R
-      # would error there without its requireNamespace guard. nold: R built
-      # --disable-long-double, which matters for a package whose model values
-      # are rationals converted to doubles.
-      nosuggests: true
+      # nold: R built --disable-long-double, which matters for a package whose
+      # model values are rationals converted to doubles.
       nold: true
+
+      # nosuggests is off, and it is the leg rather than the package.
+      #
+      # CRAN builds the tarball once with Suggests available and runs the
+      # noSuggests check against that tarball, so vignettes are already built
+      # inside it. The r-actions leg instead builds *and* checks inside the
+      # nosuggests container, so R CMD build calls loadVignetteBuilder() and
+      # dies on "vignette builder 'knitr' not found" before R CMD check is
+      # ever reached.
+      #
+      # The DESCRIPTION arrangement here is the conventional one -- knitr in
+      # Suggests, VignetteBuilder: knitr -- and is what CRAN expects.
+      #
+      # TO RE-ENABLE: once that job passes --no-build-vignettes in its
+      # build_args, or exposes them as an input. It currently hardcodes
+      # build_args = c("--no-manual"), so nothing here can reach it.
+      #
+      # It passed in #6 because there was no vignette then; adding one is what
+      # exposed the design. Tracked as a Stage 9 item in roadmap.md.
+      nosuggests: false
       # --as-cran turns on the bashisms test, which reports a WARNING when the
       # `checkbashisms` script is merely absent -- true of the macOS and
       # Windows runners, where no configure script is even run. With
