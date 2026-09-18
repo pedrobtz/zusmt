@@ -75,9 +75,13 @@ test_that("a hard instance is decided, and a long search can be stopped", {
   s2 <- solver_new()
   solver_assert_pigeonhole(s2, 9)
   arm_test_interrupt(3)
-  elapsed <- system.time(result <- solver_check(s2))[["elapsed"]]
+  # solver_check() signals an interrupt condition rather than returning, so
+  # catch it here and measure how long the search took to unwind.
+  elapsed <- system.time(
+    caught <- tryCatch(solver_check(s2), interrupt = function(e) "interrupted")
+  )[["elapsed"]]
 
-  expect_identical(result, "interrupted")
+  expect_identical(caught, "interrupted")
   expect_lt(elapsed, 5)
 })
 
@@ -85,7 +89,8 @@ test_that("a stopped solver is still usable afterwards", {
   s <- solver_new()
   solver_assert_pigeonhole(s, 9)
   arm_test_interrupt(2)
-  expect_identical(solver_check(s), "interrupted")
+  expect_identical(tryCatch(solver_check(s), interrupt = function(e) "interrupted"),
+                   "interrupted")
 
   # The handle survived the unwind: no leak, no corruption, still answers.
   s2 <- solver_new()

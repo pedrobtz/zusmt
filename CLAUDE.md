@@ -20,6 +20,10 @@ Two rules govern [src/boundary.h](src/boundary.h) and everything that uses it, a
 reason the code looks the way it does:
 
 - **No C++ exception may reach R.** Every entry point wraps its body in `zusmt::with_firewall()`.
+- **A pending interrupt is consumed by the poll that detects it** (`R_ToplevelExec`), so
+  `solver_check()` re-signals an `interrupt` condition in R. Do not "simplify" that away by calling
+  `R_CheckUserInterrupt()` at the boundary and expecting it to fire — it does not, and
+  `tests/testthat/test-interrupt.R` pins why.
 - **No longjmp may cross a live C++ frame.** The firewall copies the message into a plain buffer and
   lets every C++ object die before calling `Rf_error()`; `R_CheckUserInterrupt()` is called only
   after the firewall has returned. Interrupts are *polled* during a search, never delivered into it.

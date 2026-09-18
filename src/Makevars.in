@@ -105,4 +105,4 @@ OPENSMT_OBJECTS = \
 	opensmt/unsatcores/UnsatCoreBuilder.o
 # <<< generated
 
-OBJECTS = init.o toolchain.o smoke.o solver.o r_compat.o $(OPENSMT_OBJECTS)
+OBJECTS = init.o toolchain.o smoke.o solver.o probe_interrupt.o r_compat.o $(OPENSMT_OBJECTS)

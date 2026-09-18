@@ -238,9 +238,18 @@ normally through every destructor — and `check()` returns `s_Undef`. The bound
 interrupt in R *after* returning from the firewall, which is the first point at which no C++ frame
 is left for the longjmp to skip.
 
-Detecting a pending interrupt without delivering it is `R_ToplevelExec(R_CheckUserInterrupt)`, whose
-longjmp lands in that fresh context rather than in our frames. Polls are throttled to 50 ms, since
-`okContinue()` is called from the innermost loop.
+Detecting a pending interrupt is `R_ToplevelExec(R_CheckUserInterrupt)`, whose longjmp lands in that
+fresh context rather than in our frames. Polls are throttled to 50 ms, since `okContinue()` is
+called from the innermost loop.
+
+**That poll consumes the interrupt**, which is the non-obvious part and was measured rather than
+assumed: after `raise(SIGINT)`, polling twice reports pending once, and a subsequent
+`R_CheckUserInterrupt()` returns normally instead of raising. A C-level re-delivery is therefore
+impossible without touching R's internal flag, so `solver_check()` signals an `interrupt` condition
+itself, and falls back to an error when nothing handles it. Without that, a real Ctrl-C would hand
+the user the *string* `"interrupted"` — something a genuine interrupt never does.
+`tests/testthat/test-interrupt.R` pins the consuming behaviour, so a future R that stops doing it
+will be noticed.
 
 Measured: 10 pigeons into 9 holes takes ~18 s to prove unsat; with an interrupt armed three polls
 in, the same solve returns in under a second.

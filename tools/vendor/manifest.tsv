@@ -3,7 +3,8 @@ version	v2.9.2
 commit	34bc1b8870784a12d8e5812e1c99aacad96211c4
 committed	2025-06-16T15:55:02+02:00
 pruned	parallel bin
-patched	tools/patches.sh (console output, RNG, process exit)
+patched	R hosting (console output, RNG, process exit), portability (Windows headers, LLP64, POSIX/GNU functions, libgmpxx ABI), and interruptibility (the search loop stops on a pending R interrupt)
+patch_rules	tools/patches.sh sha256=2b031dfe09a24cc58ab9ba4d0fb8898f9f8e313528353407c25deae3841557c5
 generated	parsers/smt2new/smt2newparser.cc, smt2newparser.hh, smt2newlexer.cc
 bison	bison (GNU Bison) 3.8.2
 flex	flex 2.6.4 Apple(flex-35)
