@@ -298,7 +298,13 @@ both error paths, and the 60-declaration regression under `gctorture`.
 
 - `testthat` unit tests per logic (QF_UF, QF_LRA, QF_LIA, QF_AX), plus error paths and interrupts.
 - Regression corpus of small SMT-LIB files under `inst/` (keep the package tarball small).
-- ASAN/UBSAN and valgrind runs via `rhub::rhub_check()`; add a `--use-valgrind` note to CLAUDE.md.
+- **Re-enable the `sanitizers` leg** in `.github/workflows/native-checks.yml`. It is parked, not
+  dropped: `r-actions`' `sanitizers.yml` sets `CC`/`CXX` to clang but not `CXX20`, so a C++20 package
+  compiles with R's configured g++ while carrying clang-only link flags, and every compile probe
+  fails. Waiting on `CXX17`/`CXX20` (and their `*STD` variants) being set there. UBSan covers ground
+  valgrind does not — signed overflow, misaligned pointers, invalid casts — and this package has
+  already shipped one memory bug to review, so it is worth having back.
+- `valgrind`, `gctorture`, `rchk` and `lto` already run via `native-checks.yml` (adopted in Stage 6).
 - Guard check time: keep examples and tests fast; CRAN's limit is the practical constraint.
 
 Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just the happy path.

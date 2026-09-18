@@ -29,6 +29,20 @@ jobs:
   # GMP is installed. zusmt is the first package in the set with C++ and a
   # configure probe, which is why it is the first to hit it.
   #
+  # TO RE-ENABLE: uncomment the block below, once r-actions' sanitizers.yml
+  # sets the standard-specific compiler variables next to CC/CXX --
+  #
+  #   CXX17 = clang++   CXX17STD = -std=gnu++17
+  #   CXX20 = clang++   CXX20STD = -std=gnu++20
+  #
+  # -- so that a C++20 package is compiled by the same clang whose link flags
+  # are in ~/.R/Makevars. Nothing in this repository can fix it.
+  #
+  # This is worth coming back for rather than quietly dropping: UBSan covers
+  # ground valgrind does not -- signed overflow, misaligned pointers, invalid
+  # casts -- and this is the package that shipped an unprotected-SEXP bug to
+  # review. Tracked as a Stage 7 item in roadmap.md.
+  #
   # sanitizers:
   #   uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
   #   with:
