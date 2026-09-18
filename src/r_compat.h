@@ -12,6 +12,21 @@
 
 #include <ostream>
 
+// Format-checking for the printf-style shim below. The archetype has to be
+// chosen per compiler, not per __GNUC__: clang defines __GNUC__ but does not
+// implement the gnu_printf archetype, and warns -Wignored-attributes if given
+// it. On mingw the distinction is the point -- plain `printf` there checks
+// against MSVCRT's conversions, while the shim forwards to std::vsnprintf.
+#if defined(__clang__)
+#  define ZUSMT_PRINTF_FMT(fmt_idx, first_arg) \
+     __attribute__((format(printf, fmt_idx, first_arg)))
+#elif defined(__GNUC__)
+#  define ZUSMT_PRINTF_FMT(fmt_idx, first_arg) \
+     __attribute__((format(gnu_printf, fmt_idx, first_arg)))
+#else
+#  define ZUSMT_PRINTF_FMT(fmt_idx, first_arg)
+#endif
+
 // Declares Rprintf/REprintf, which rule 2 in tools/patches.sh rewrites calls
 // to. R_ext/Print.h alone does not pull in the Rf_ remapping macros.
 #include <R_ext/Print.h>
@@ -33,7 +48,7 @@ std::ostream & rerr();
 // into a freshly malloc'd buffer that the caller free()s, returns the length
 // or -1. Used on every platform rather than only Windows, so the vendored
 // call sites have one behaviour everywhere.
-int alloc_printf(char ** out, char const * fmt, ...);
+int alloc_printf(char ** out, char const * fmt, ...) ZUSMT_PRINTF_FMT(2, 3);
 
 // Replaces rand()/srand(). Self-contained xorshift rather than R's RNG: these
 // call sites are heuristic tie-breaks inside the solver, and reaching into

@@ -45,8 +45,13 @@ round-trips — a missing header, a missing typedef, an LLP64 cast, then `dprint
 
 ```sh
 brew install mingw-w64
-./tools/check-mingw.sh     # syntax-checks all 87 sources against Windows headers
+./tools/check-mingw.sh            # compile errors: missing headers, LLP64 widths, absent functions
+./tools/check-mingw.sh --link     # also links the objects: duplicate definitions, e.g. class-scope thread_local
 ```
+
+`--link` is slower and exists because the compile stage cannot see link failures: a class-scope
+`thread_local` of non-trivial type compiles everywhere and links nowhere on mingw, which cost a
+round trip of its own.
 
 Re-running on a clean checkout must leave `git status` clean — that is the reproducibility property
 the guard depends on. A PR that changes a file under `src/opensmt/` without changing

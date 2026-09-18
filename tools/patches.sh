@@ -120,6 +120,22 @@ patch_exact parsers/smt2new/smt2newlexer.cc \
   's/yyin = stdin;/yyin = NULL;  \/* zusmt: set by yyset_in(); never read *\//; s/yyout = stdout;/yyout = NULL;  \/* zusmt: ECHO is unreachable *\//' \
   'yyin = stdin / yyout = stdout defaults'
 
+#    A class-scope `thread_local` of non-trivial type does not link on mingw.
+#    mpz_class needs dynamic initialisation, so the compiler emits a TLS init
+#    wrapper; on ELF that wrapper is COMDAT and the linker folds the copies,
+#    but GCC targeting PE-COFF emits it without COMDAT linkage, so all 28
+#    translation units that touch FastRational contribute a definition and ld
+#    rejects every one after the first. The member on the line above, `pool`,
+#    proves it is the thread_local and not `inline static`: same storage
+#    class, same 28 users, links fine.
+#    Moving it inside the accessor keeps the per-thread semantics upstream
+#    asked for while confining access to the function body, so no
+#    externally-visible wrapper is emitted. `temp` is named in exactly one
+#    other place -- the accessor itself -- so this reaches every use.
+patch_exact common/numbers/FastRational.h \
+  '/^    inline static thread_local mpz_class temp;$/d; s|inline static mpz_ptr mpz() { return temp.get_mpz_t(); }|inline static mpz_ptr mpz() { static thread_local mpz_class temp; return temp.get_mpz_t(); }|' \
+  'TLS: move thread_local into the accessor, so mingw emits no TLS wrapper'
+
 # 6. POSIX headers that Windows does not have. Upstream targets Linux and
 #    macOS; mingw has neither <sys/resource.h> nor <sys/wait.h>, and the
 #    Windows build fails at the first file that includes Timer.h.
@@ -206,3 +222,19 @@ for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_pri
   n=$((n + 1))
 done
 echo "    shim include added to ${n} files"
+
+# A class- or namespace-scope thread_local of non-trivial type is the whole
+# mingw link failure above, and a version bump could reintroduce one in a file
+# nothing here patches. Cheap to assert, and it needs no linker: the
+# function-local form the fix uses never starts a line with `static
+# thread_local`, so this matches the broken shape only.
+echo "==> checking for class-scope thread_local (does not link on mingw)"
+if grep -rnE '^[[:space:]]*(inline[[:space:]]+)?static[[:space:]]+thread_local' \
+     "${vendor}" --include='*.cc' --include='*.h'; then
+  echo "ERROR: the lines above declare a thread_local at class or namespace scope." >&2
+  echo "On mingw each translation unit emits its own TLS init wrapper and the" >&2
+  echo "link fails with 'multiple definition of TLS init function'. Move it" >&2
+  echo "inside an accessor: static thread_local T x; within the function body." >&2
+  exit 1
+fi
+echo "    none"

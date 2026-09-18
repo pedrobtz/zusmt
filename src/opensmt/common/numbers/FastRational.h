@@ -88,8 +88,7 @@ class FastRational
     mutable mpq_ptr mpq{nullptr};
 
     inline static mpqPool pool;
-    inline static thread_local mpz_class temp;
-    inline static mpz_ptr mpz() { return temp.get_mpz_t(); }
+    inline static mpz_ptr mpz() { static thread_local mpz_class temp; return temp.get_mpz_t(); }
 
 
     // Bit masks for questioning state:

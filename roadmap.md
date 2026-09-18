@@ -198,8 +198,12 @@ either not compile or send proof output to the console.
 
 Windows took five CI round-trips, each a different assumption: no `<sys/resource.h>`, no
 `suseconds_t`, a 32-bit `long`, then `dprintf`/`asprintf` and a `size_t` signature mismatch.
-`tools/check-mingw.sh` now syntax-checks all 87 sources against real mingw headers locally, which
-finds that whole class in one pass — use it after a bump, before pushing.
+A sixth was a *link* failure, not a compile one: upstream's `inline static thread_local mpz_class
+temp` compiles everywhere and links nowhere on mingw, which emits the TLS init wrapper without
+COMDAT linkage so all 28 translation units touching `FastRational` define it.
+`tools/check-mingw.sh` covers both classes locally — compile by default, `--link` to link the
+objects with unresolved symbols ignored purely to find duplicate definitions. Use it after a bump,
+before pushing.
 
 The portability problems CI found, all now rules in the same script:
 
