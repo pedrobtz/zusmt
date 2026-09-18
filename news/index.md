@@ -2,6 +2,12 @@
 
 ## zusmt 0.0.0.9000
 
+- Solver handles are external pointers with finalizers, every entry
+  point runs behind one exception firewall, and a long search can be
+  interrupted: the solver’s own `okContinue()` is asked about pending R
+  interrupts, so the search unwinds through its destructors instead of
+  being longjmped over.
+
 - The bundled solver is now compiled and linked, and decides problems
   from R. `src/Makevars.in`’s object list is derived from upstream’s own
   CMakeLists by `tools/objects.sh`, and `tools/patches.sh` rewrites

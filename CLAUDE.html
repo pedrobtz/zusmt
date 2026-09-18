@@ -41,8 +41,15 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Stages 1–4 of <a href="roadmap.html">roadmap.md</a> are done: OpenSMT v2.9.2 is bundled, compiled, patched for R hosting, and solves from R. <code>smoke_solve()</code> (internal, <a href="src/smoke.cc">src/smoke.cc</a>) decides two tiny QF_UF problems and is scaffolding — the real API is Stage 6. <code><a href="reference/smt_toolchain.html">smt_toolchain()</a></code> likewise dates from Stage 1. Read <code>roadmap.md</code> before starting work; it says which stage the next piece belongs to.</p>
-</div>
+<p>Stages 1–5 of <a href="roadmap.html">roadmap.md</a> are done. OpenSMT v2.9.2 is bundled, patched for R hosting, compiled on all seven CI legs, and reachable from R through external-pointer handles with finalizers. What does <strong>not</strong> exist yet is the public API — Stage 6. Everything in <a href="R/solver.R">R/solver.R</a> is internal scaffolding, as are <code>smoke_solve()</code> and <code><a href="reference/smt_toolchain.html">smt_toolchain()</a></code>.</p>
+<p>Two rules govern <a href="src/boundary.h">src/boundary.h</a> and everything that uses it, and they are the reason the code looks the way it does:</p>
+<ul><li>
+<strong>No C++ exception may reach R.</strong> Every entry point wraps its body in <code>zusmt::with_firewall()</code>.</li>
+<li>
+<strong>A pending interrupt is consumed by the poll that detects it</strong> (<code>R_ToplevelExec</code>), so <code>solver_check()</code> re-signals an <code>interrupt</code> condition in R. Do not “simplify” that away by calling <code>R_CheckUserInterrupt()</code> at the boundary and expecting it to fire — it does not, and <code>tests/testthat/test-interrupt.R</code> pins why.</li>
+<li>
+<strong>No longjmp may cross a live C++ frame.</strong> The firewall copies the message into a plain buffer and lets every C++ object die before calling <code>Rf_error()</code>; <code>R_CheckUserInterrupt()</code> is called only after the firewall has returned. Interrupts are <em>polled</em> during a search, never delivered into it.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="vendored-sources">Vendored sources<a class="anchor" aria-label="anchor" href="#vendored-sources"></a></h2>
 <p><code>src/opensmt/</code> is generated. Never edit it by hand: <code>tools/vendor/verify</code> and the <code>vendor</code> workflow both exist to catch exactly that, and a hand edit is lost at the next bump.</p>

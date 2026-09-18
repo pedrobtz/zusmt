@@ -14,14 +14,32 @@ it to R. The R layer is a thin wrapper; nearly all of the work is in
 
 ## Current state
 
-Stages 1–4 of [roadmap.md](https://pedrobtz.github.io/zusmt/roadmap.md)
-are done: OpenSMT v2.9.2 is bundled, compiled, patched for R hosting,
-and solves from R. `smoke_solve()` (internal,
-[src/smoke.cc](https://pedrobtz.github.io/zusmt/src/smoke.cc)) decides
-two tiny QF_UF problems and is scaffolding — the real API is Stage 6.
-[`smt_toolchain()`](https://pedrobtz.github.io/zusmt/reference/smt_toolchain.md)
-likewise dates from Stage 1. Read `roadmap.md` before starting work; it
-says which stage the next piece belongs to.
+Stages 1–5 of [roadmap.md](https://pedrobtz.github.io/zusmt/roadmap.md)
+are done. OpenSMT v2.9.2 is bundled, patched for R hosting, compiled on
+all seven CI legs, and reachable from R through external-pointer handles
+with finalizers. What does **not** exist yet is the public API — Stage
+6. Everything in
+[R/solver.R](https://pedrobtz.github.io/zusmt/R/solver.R) is internal
+scaffolding, as are `smoke_solve()` and
+[`smt_toolchain()`](https://pedrobtz.github.io/zusmt/reference/smt_toolchain.md).
+
+Two rules govern
+[src/boundary.h](https://pedrobtz.github.io/zusmt/src/boundary.h) and
+everything that uses it, and they are the reason the code looks the way
+it does:
+
+- **No C++ exception may reach R.** Every entry point wraps its body in
+  `zusmt::with_firewall()`.
+- **A pending interrupt is consumed by the poll that detects it**
+  (`R_ToplevelExec`), so `solver_check()` re-signals an `interrupt`
+  condition in R. Do not “simplify” that away by calling
+  `R_CheckUserInterrupt()` at the boundary and expecting it to fire — it
+  does not, and `tests/testthat/test-interrupt.R` pins why.
+- **No longjmp may cross a live C++ frame.** The firewall copies the
+  message into a plain buffer and lets every C++ object die before
+  calling `Rf_error()`; `R_CheckUserInterrupt()` is called only after
+  the firewall has returned. Interrupts are *polled* during a search,
+  never delivered into it.
 
 ## Vendored sources
 

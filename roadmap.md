@@ -277,7 +277,7 @@ The portability problems CI found, all now rules in the same script:
 Exit: **met** — `R CMD check --as-cran` reports no compiled-code
 findings.
 
-## Stage 5 — The R/C++ boundary
+## Stage 5 — The R/C++ boundary — **done** (PR \#4)
 
 - Solver handles as external pointers with finalizers;
   `R_RegisterCFinalizerEx(..., TRUE)`.
@@ -291,8 +291,43 @@ findings.
 - Keep the boundary file(s) small and in `src/` top level, separate from
   `src/opensmt/`.
 
-Exit: handles survive [`gc()`](https://rdrr.io/r/base/gc.html),
-double-free-free; an upstream error surfaces as a normal R condition.
+How interruption works, since it was the part with no obvious answer in
+v2.9.2 (`GlobalStop` is a `master` thing and does not exist at this
+pin): `CoreSMTSolver::okContinue()` is the search loop’s own termination
+check, and a patch rule makes it also ask
+`zusmt::interrupt_requested()`. A pending interrupt therefore ends the
+search exactly the way upstream’s own stop flag does — by unwinding
+normally through every destructor — and `check()` returns `s_Undef`. The
+boundary raises the interrupt in R *after* returning from the firewall,
+which is the first point at which no C++ frame is left for the longjmp
+to skip.
+
+Detecting a pending interrupt is `R_ToplevelExec(R_CheckUserInterrupt)`,
+whose longjmp lands in that fresh context rather than in our frames.
+Polls are throttled to 50 ms, since `okContinue()` is called from the
+innermost loop.
+
+**That poll consumes the interrupt**, which is the non-obvious part and
+was measured rather than assumed: after `raise(SIGINT)`, polling twice
+reports pending once, and a subsequent `R_CheckUserInterrupt()` returns
+normally instead of raising. A C-level re-delivery is therefore
+impossible without touching R’s internal flag, so `solver_check()`
+signals an `interrupt` condition itself, and falls back to an error when
+nothing handles it. Without that, a real Ctrl-C would hand the user the
+*string* `"interrupted"` — something a genuine interrupt never does.
+`tests/testthat/test-interrupt.R` pins the consuming behaviour, so a
+future R that stops doing it will be noticed.
+
+Measured: 10 pigeons into 9 holes takes ~18 s to prove unsat; with an
+interrupt armed three polls in, the same solve returns in under a
+second.
+
+Exit: **met** — 26 tests, covering
+[`gc()`](https://rdrr.io/r/base/gc.html) survival, collection of
+unreferenced handles, explicit release being idempotent rather than a
+double free, foreign external pointers rejected by tag, and a C++
+exception arriving as an ordinary R condition with the session still
+usable.
 
 ## Stage 6 — R-facing API
 

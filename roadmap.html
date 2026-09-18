@@ -224,13 +224,17 @@
 </ul><p>Exit: <strong>met</strong> — <code>R CMD check --as-cran</code> reports no compiled-code findings.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-5--the-rc-boundary">Stage 5 — The R/C++ boundary<a class="anchor" aria-label="anchor" href="#stage-5--the-rc-boundary"></a></h2>
+<h2 id="stage-5--the-rc-boundary--done-pr-4">Stage 5 — The R/C++ boundary — <strong>done</strong> (PR #4)<a class="anchor" aria-label="anchor" href="#stage-5--the-rc-boundary--done-pr-4"></a></h2>
 <ul><li>Solver handles as external pointers with finalizers; <code>R_RegisterCFinalizerEx(..., TRUE)</code>.</li>
 <li>One exception firewall macro wrapping every <code>.Call</code> entry: <code>catch (std::exception&amp;)</code> → <code>Rf_error()</code>; never let an exception or a <code>longjmp</code> cross the other’s frames.</li>
 <li>
 <code>R_init_zusmt</code> with <code>R_registerRoutines</code> + <code>R_useDynamicSymbols(dll, FALSE)</code> (<code>@useDynLib zusmt, .registration = TRUE</code> is already in <a href="R/zusmt-package.R">R/zusmt-package.R</a>).</li>
 <li>Keep the boundary file(s) small and in <code>src/</code> top level, separate from <code>src/opensmt/</code>.</li>
-</ul><p>Exit: handles survive <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code>, double-free-free; an upstream error surfaces as a normal R condition.</p>
+</ul><p>How interruption works, since it was the part with no obvious answer in v2.9.2 (<code>GlobalStop</code> is a <code>master</code> thing and does not exist at this pin): <code>CoreSMTSolver::okContinue()</code> is the search loop’s own termination check, and a patch rule makes it also ask <code>zusmt::interrupt_requested()</code>. A pending interrupt therefore ends the search exactly the way upstream’s own stop flag does — by unwinding normally through every destructor — and <code>check()</code> returns <code>s_Undef</code>. The boundary raises the interrupt in R <em>after</em> returning from the firewall, which is the first point at which no C++ frame is left for the longjmp to skip.</p>
+<p>Detecting a pending interrupt is <code>R_ToplevelExec(R_CheckUserInterrupt)</code>, whose longjmp lands in that fresh context rather than in our frames. Polls are throttled to 50 ms, since <code>okContinue()</code> is called from the innermost loop.</p>
+<p><strong>That poll consumes the interrupt</strong>, which is the non-obvious part and was measured rather than assumed: after <code>raise(SIGINT)</code>, polling twice reports pending once, and a subsequent <code>R_CheckUserInterrupt()</code> returns normally instead of raising. A C-level re-delivery is therefore impossible without touching R’s internal flag, so <code>solver_check()</code> signals an <code>interrupt</code> condition itself, and falls back to an error when nothing handles it. Without that, a real Ctrl-C would hand the user the <em>string</em> <code>"interrupted"</code> — something a genuine interrupt never does. <code>tests/testthat/test-interrupt.R</code> pins the consuming behaviour, so a future R that stops doing it will be noticed.</p>
+<p>Measured: 10 pigeons into 9 holes takes ~18 s to prove unsat; with an interrupt armed three polls in, the same solve returns in under a second.</p>
+<p>Exit: <strong>met</strong> — 26 tests, covering <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code> survival, collection of unreferenced handles, explicit release being idempotent rather than a double free, foreign external pointers rejected by tag, and a C++ exception arriving as an ordinary R condition with the session still usable.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-6--r-facing-api">Stage 6 — R-facing API<a class="anchor" aria-label="anchor" href="#stage-6--r-facing-api"></a></h2>
