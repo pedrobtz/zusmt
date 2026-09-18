@@ -201,6 +201,20 @@ patch_exact common/polynomials/Polynomial.h \
   's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
   'size(): definition must say std::size_t, not unsigned long'
 
+#    Under LTO, GCC's value-range propagation cannot see that `newsize` only
+#    ever holds an entry of the positive `primes[]` table, concludes it could
+#    be negative, and reports the resulting conversion as an allocation of
+#    18446744073709551615 bytes -- (size_t)-1 -- which R CMD check promotes to
+#    a WARNING. CRAN runs an LTO flavour, so this arrives in a submission
+#    report otherwise.
+#    A cast would silence the diagnostic while leaving the same conversion;
+#    the guard makes the range provable instead. It is unreachable in fact,
+#    which is the point: it tells the compiler what the table already
+#    guarantees.
+patch_exact minisat/mtl/Map.h \
+  's|        table = new vec<Pair>\[newsize\];|        if (newsize <= 0) newsize = primes[0];  /* zusmt: bound for -Walloc-size-larger-than under LTO */\n        table = new vec<Pair>[newsize];|; s|        table = new std::vector<Pair>\[newsize\];|        if (newsize <= 0) newsize = primes[0];  /* zusmt: bound for -Walloc-size-larger-than under LTO */\n        table = new std::vector<Pair>[newsize];|' \
+  'Map.h: bound newsize so LTO value-range analysis can see it is positive'
+
 # 9. The only rule here that changes what the solver DOES, rather than what it
 #    can compile against or where it writes. Everything above keeps upstream's
 #    behaviour and makes it portable or R-safe; this one gives the search a

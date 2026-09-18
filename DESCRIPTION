@@ -2,7 +2,7 @@ Package: zusmt
 Title: Bindings to the 'OpenSMT' Satisfiability Modulo Theories Solver
 Version: 0.0.0.9000
 Authors@R: c(
-    person("Pedro", "Botz", , "pedrobtz@gmail.com", role = c("aut", "cre")),
+    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre")),
     person("OpenSMT authors", role = c("ctb", "cph"),
            comment = "bundled OpenSMT sources; see LICENSE.note")
   )

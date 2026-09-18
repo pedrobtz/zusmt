@@ -4,7 +4,7 @@ commit	34bc1b8870784a12d8e5812e1c99aacad96211c4
 committed	2025-06-16T15:55:02+02:00
 pruned	parallel bin
 patched	R hosting (console output, RNG, process exit), portability (Windows headers, LLP64, POSIX/GNU functions, libgmpxx ABI), and interruptibility (the search loop stops on a pending R interrupt)
-patch_rules	tools/patches.sh sha256=0efa8c7f78615526c2ac0b0b462c3b988c5e46534094eeff5f09160a5cae0afe
+patch_rules	tools/patches.sh sha256=6eb0cc3abdfdb0d256fa281e755cbedfd56e27456f5c3783f6c8296c8c049de5
 generated	parsers/smt2new/smt2newparser.cc, smt2newparser.hh, smt2newlexer.cc
 bison	bison (GNU Bison) 3.8.2
 flex	flex 2.6.4 Apple(flex-35)

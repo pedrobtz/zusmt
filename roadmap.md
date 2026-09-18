@@ -314,6 +314,9 @@ Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just t
 ## Stage 9 — CRAN submission
 
 - Run the `cran-extrachecks` skill.
+- **Installed size is ~45 MB**, almost all `libs/`. That is an INFO in the r-hub container and a NOTE
+  on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the
+  explanation belongs in `cran-comments.md` before a reviewer asks, not after.
 - Verify: `SystemRequirements` accurate, `LICENSE.note` present, copyright holders credited,
   install time and tarball size acceptable, no compiler warnings on CRAN's flavours, `--as-cran`
   clean including the "libs size" note.

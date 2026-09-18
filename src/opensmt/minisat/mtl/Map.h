@@ -87,6 +87,7 @@ class Map {
         for (int i = 1; newsize <= cap && i < nprimes; i++)
            newsize = primes[i];
 
+        if (newsize <= 0) newsize = primes[0];  /* zusmt: bound for -Walloc-size-larger-than under LTO */
         table = new vec<Pair>[newsize];
         cap   = newsize;
 
@@ -300,6 +301,7 @@ public:
         for (int i = 1; newsize <= cap && i < nprimes; i++)
            newsize = primes[i];
 
+        if (newsize <= 0) newsize = primes[0];  /* zusmt: bound for -Walloc-size-larger-than under LTO */
         table = new std::vector<Pair>[newsize];
         cap   = newsize;
 
@@ -459,6 +461,7 @@ class VecKeyMap {
         for (int i = 1; newsize <= cap && i < nprimes; i++)
            newsize = primes[i];
 
+        if (newsize <= 0) newsize = primes[0];  /* zusmt: bound for -Walloc-size-larger-than under LTO */
         table = new vec<Pair>[newsize];
         cap   = newsize;
 
