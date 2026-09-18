@@ -191,6 +191,18 @@ patch_exact common/polynomials/Polynomial.h \
   's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
   'size(): definition must say std::size_t, not unsigned long'
 
+#    Make the search loop interruptible. okContinue() is the solver's own
+#    termination check, called from the innermost loop, and it already ends
+#    the search by returning false -- unwinding normally through every
+#    destructor. Asking about a pending R interrupt in the same place gets
+#    interruptibility with upstream's own control flow, rather than a longjmp
+#    across C++ frames, which would skip those destructors and leak the
+#    solver's heap. check() then returns s_Undef, and the boundary raises the
+#    interrupt in R once no C++ frame is left.
+patch_exact smtsolvers/CoreSMTSolver.cc \
+  's|^    return not opensmt::stop;|    return not opensmt::stop and not zusmt::interrupt_requested();|' \
+  'okContinue(): also stop when R has a pending interrupt'
+
 # 9. Functions that are POSIX or GNU rather than standard, and one signature
 #    that only mismatches under LLP64. All found by the Windows leg.
 echo "    POSIX/GNU functions absent on Windows:"

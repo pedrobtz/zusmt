@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
+#include <chrono>
 #include <streambuf>
 #include <string>
 
@@ -134,4 +135,72 @@ int zusmt::alloc_printf(char ** out, char const * fmt, ...) {
     }
     *out = buffer;
     return written;
+}
+
+namespace {
+
+// R_ToplevelExec runs the function with a fresh top-level context, so a
+// longjmp out of R_CheckUserInterrupt unwinds to that context rather than
+// past our C++ frames, and is reported as FALSE instead.
+void check_interrupt_inner(void *) {
+    R_CheckUserInterrupt();
+}
+
+bool & interrupt_seen() {
+    static bool seen = false;
+    return seen;
+}
+
+// -1 means unarmed. Counts polls down to zero, then reports pending once.
+int & test_interrupt_countdown() {
+    static int countdown = -1;
+    return countdown;
+}
+
+}  // namespace
+
+bool zusmt::interrupt_requested() {
+    // Throttled: R_ToplevelExec sets up and tears down a context, and
+    // okContinue() is called in the solver's innermost loop. 50ms is far below
+    // what a person notices and far above what this costs.
+    using clock = std::chrono::steady_clock;
+    static clock::time_point last;
+    static bool primed = false;
+
+    if (interrupt_seen()) return true;
+
+    int & countdown = test_interrupt_countdown();
+    if (countdown >= 0) {
+        if (countdown == 0) {
+            countdown = -1;
+            interrupt_seen() = true;
+            return true;
+        }
+        --countdown;
+        return false;
+    }
+
+    clock::time_point const now = clock::now();
+    if (primed && now - last < std::chrono::milliseconds(50)) return false;
+    primed = true;
+    last = now;
+
+    if (R_ToplevelExec(check_interrupt_inner, nullptr) == FALSE) {
+        interrupt_seen() = true;
+        return true;
+    }
+    return false;
+}
+
+bool zusmt::interrupt_was_requested() {
+    return interrupt_seen();
+}
+
+void zusmt::clear_interrupt_request() {
+    interrupt_seen() = false;
+}
+
+void zusmt::arm_test_interrupt(int polls) {
+    test_interrupt_countdown() = polls;
+    interrupt_seen() = false;
 }
