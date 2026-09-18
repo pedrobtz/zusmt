@@ -34,7 +34,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="zusmt-0009000">zusmt 0.0.0.9000<a class="anchor" aria-label="anchor" href="#zusmt-0009000"></a></h2>
-<ul><li><p>Bundled OpenSMT v2.9.2 under <code>src/opensmt/</code> (238 files), imported by <code>tools/vendor.sh</code>. Nothing compiles it yet – that is the next step.</p></li>
+<ul><li><p>The bundled solver is now compiled and linked, and decides problems from R. <code>src/Makevars.in</code>’s object list is derived from upstream’s own CMakeLists by <code>tools/objects.sh</code>, and <code>tools/patches.sh</code> rewrites upstream’s console output, RNG and process-exit calls to things a package may do.</p></li>
+<li><p>Bundled OpenSMT v2.9.2 under <code>src/opensmt/</code> (238 files), imported by <code>tools/vendor.sh</code>. Nothing compiles it yet – that is the next step.</p></li>
 <li><p>Added <code><a href="../reference/smt_toolchain.html">smt_toolchain()</a></code>, a build-time probe reporting the C++20 compiler, GMP version and thread support the package was compiled against. This is Stage 1 of <code>roadmap.md</code>: it establishes that R’s toolchain can build what OpenSMT requires, ahead of vendoring the solver itself.</p></li>
 <li><p>Added <code>configure</code> / <code>configure.win</code>, which locate GMP and generate <code>src/Makevars</code>.</p></li>
 </ul></div>

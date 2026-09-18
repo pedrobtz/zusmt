@@ -170,16 +170,22 @@
 <p>Exit: <strong>met</strong> — <code>tools/vendor.sh</code> run twice produces byte-identical checksums, and <code>tools/vendor/verify</code> passes against the manifest.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-3--build-it-with-rs-toolchain">Stage 3 — Build it with R’s toolchain<a class="anchor" aria-label="anchor" href="#stage-3--build-it-with-rs-toolchain"></a></h2>
+<h2 id="stage-3--build-it-with-rs-toolchain--done-pr-3-with-stage-4">Stage 3 — Build it with R’s toolchain — <strong>done</strong> (PR #3, with Stage 4)<a class="anchor" aria-label="anchor" href="#stage-3--build-it-with-rs-toolchain--done-pr-3-with-stage-4"></a></h2>
 <ul><li>Generate <code>src/Makevars</code> object list from the vendored tree (a <code>tools/</code> script emitting an explicit <code>OBJECTS = opensmt/api/MainSolver.o ...</code>). Explicit list, not <code>$(wildcard)</code> — that would force <code>SystemRequirements: GNU make</code>.</li>
 <li>
 <code>PKG_CPPFLAGS = -I. -Iopensmt @GMP_CFLAGS@</code>, <code>PKG_LIBS = @GMP_LIBS@</code>; <code>Makevars.win</code> mirrors it.</li>
 <li>Expect to fix: unused-parameter/sign-compare warning noise, missing <code>#include</code> under newer libstdc++, <code>-Wall -Wextra</code> diagnostics CRAN surfaces. Do not add <code>-w</code>; CRAN rejects flag suppression.</li>
 <li>Watch install time and <code>.so</code> size; if unacceptable, revisit pruning (interpolation, proofs, lookahead and unsat cores are candidates).</li>
-</ul><p>Exit: <code>devtools::load_all()</code> compiles the whole vendored tree; a smoke <code>.Call</code> runs <code>MainSolver</code> on the <code>examples/test1.cc</code> problem and returns <code>sat</code>/<code>unsat</code> to R.</p>
+</ul><p><strong>Stages 3 and 4 turned out to be one stage.</strong> Stage 3 alone compiles and links, but <code>R CMD check --as-cran</code> then reports a compiled-code WARNING for upstream’s <code>std::cerr</code>, <code>printf</code>, <code>rand</code>/<code>srand</code> and <code>exit</code>/<code>abort</code>, and the workflow fails on a WARNING — so a Stage 3 PR could not be green, and the two shipped together.</p>
+<p>Two findings worth keeping:</p>
+<ul><li>
+<strong>The object list must come from upstream’s CMakeLists, not from <code>find</code>.</strong> v2.9.2 ships <code>tsolvers/bvsolver/</code> and <code>logics/BVLogic.cc</code> but comments both out of its build, and they do not compile (<code>BVLogic</code> is left incomplete). 87 sources build, of 91 present. This also reverses Stage 2’s decision to delete the <code>CMakeLists.txt</code> files as “a trap”: they are the only authoritative statement of what upstream compiles, and <code>tools/objects.sh</code> now reads them.</li>
+<li>
+<strong>R compiles the vendored tree in place</strong>, so a build leaves <code>.o</code> files inside <code>src/opensmt/</code> and the checksum manifest has to exclude them, or <code>verify</code> fails on any built tree.</li>
+</ul><p>Exit: <strong>met</strong> — 87 sources compile, and <code>smoke_solve()</code> returns <code>unsat</code> for <code>a AND NOT a</code> and <code>sat</code> for <code>a</code>, from R, through <code>MainSolver</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-4--patch-upstream-for-r-hosting">Stage 4 — Patch upstream for R hosting<a class="anchor" aria-label="anchor" href="#stage-4--patch-upstream-for-r-hosting"></a></h2>
+<h2 id="stage-4--patch-upstream-for-r-hosting--done-pr-3-with-stage-3">Stage 4 — Patch upstream for R hosting — <strong>done</strong> (PR #3, with Stage 3)<a class="anchor" aria-label="anchor" href="#stage-4--patch-upstream-for-r-hosting--done-pr-3-with-stage-3"></a></h2>
 <p>Maintain these as a numbered patch series under <code>tools/patches/</code>, applied by <code>vendor.sh</code>, so a version bump is re-applicable rather than re-discovered.</p>
 <ul><li>
 <code>exit()</code>/<code>abort()</code> → throw (<code>ApiException</code>/<code>InternalException</code> already exist upstream).</li>
@@ -189,7 +195,33 @@
 <code>std::cerr</code> diagnostics → <code>REprintf</code>.</li>
 <li>Check for <code>srand</code>/<code>rand</code> and RNG seeding that should defer to R, and for any <code>assert</code> that aborts in release builds.</li>
 <li>Long-running solves must remain interruptible: plan for <code>R_CheckUserInterrupt()</code> via OpenSMT’s stop callback (<code>GlobalStop</code>), never a longjmp through C++ frames.</li>
-</ul><p>Exit: <code>R CMD check --as-cran</code> reports no <code>exit</code>/<code>abort</code>/stdout findings.</p>
+</ul><p>What the rules are, in <code>tools/patches.sh</code>, each asserting it changed something so that a bump which makes one a no-op fails loudly rather than silently leaving a call site behind:</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Rule</th>
+<th>Scale</th>
+</tr></thead><tbody><tr><td>
+<code>std::cout</code>/<code>std::cerr</code> → <code>zusmt::rout()</code>/<code>rerr()</code>, ostreams over <code>Rprintf</code>/<code>REprintf</code>
+</td>
+<td>14 + 20 files</td>
+</tr><tr><td>
+<code>printf</code> → <code>Rprintf</code>; <code>fprintf(stderr,</code> → <code>REprintf(</code>
+</td>
+<td>19 + 7 files</td>
+</tr><tr><td>
+<code>rand</code>/<code>srand</code> → a self-contained xorshift</td>
+<td>2 files</td>
+</tr><tr><td>
+<code>exit</code>/<code>abort</code> → <code>zusmt::fatal()</code>, which throws</td>
+<td>4 call sites, individually</td>
+</tr><tr><td>the <code>stdout</code>/<code>stderr</code> <code>FILE*</code> symbols themselves</td>
+<td>3 files</td>
+</tr></tbody></table><p>The last two are per-call-site rather than blanket rewrites, because <code>Interpret</code> has a <em>method</em> named <code>exit()</code> and 4 <code>fprintf</code> calls write to a real file rather than the console — a blanket rule would either not compile or send proof output to the console.</p>
+<p>Windows took five CI round-trips, each a different assumption: no <code>&lt;sys/resource.h&gt;</code>, no <code>suseconds_t</code>, a 32-bit <code>long</code>, then <code>dprintf</code>/<code>asprintf</code> and a <code>size_t</code> signature mismatch. A sixth was a <em>link</em> failure, not a compile one: upstream’s <code>inline static thread_local mpz_class temp</code> compiles everywhere and links nowhere on mingw, which emits the TLS init wrapper without COMDAT linkage so all 28 translation units touching <code>FastRational</code> define it. <code>tools/check-mingw.sh</code> covers both classes locally — compile by default, <code>--link</code> to link the objects with unresolved symbols ignored purely to find duplicate definitions. Use it after a bump, before pushing.</p>
+<p>The portability problems CI found, all now rules in the same script:</p>
+<ul><li>
+<strong>Windows has no <code>&lt;sys/resource.h&gt;</code>.</strong> Upstream times itself with <code>getrusage()</code>, so the mingw build failed at the first file including <code>Timer.h</code>. <a href="src/r_rusage.h">src/r_rusage.h</a> supplies it on Windows via <code>clock()</code> — not <code>GetProcessTimes()</code>, because <code>&lt;windows.h&gt;</code> would reach 87 translation units and bring its <code>min</code>/<code>max</code> and <code>ERROR</code> macros with them. The two <code>&lt;sys/wait.h&gt;</code> includes were vestigial (neither file calls <code>fork</code> or <code>wait</code>) and are simply dropped.</li>
+<li>
+<strong>libgmpxx is an ABI dependency, and was only needed for one function.</strong> <code>operator&lt;&lt;(ostream&amp;, mpq)</code> lives in the library and is compiled against whichever C++ standard library built it, so on a libc++ toolchain linking a libstdc++-built libgmpxx — CRAN’s <code>clang23</code> container, FreeBSD, any mixed setup — the shared object fails to load with an undefined symbol. It was the <em>only</em> C++ symbol we took from libgmpxx; everything else is plain C. Two call sites now use header-only <code>get_str()</code> instead, which drops the dependency rather than working around it.</li>
+</ul><p>Exit: <strong>met</strong> — <code>R CMD check --as-cran</code> reports no compiled-code findings.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-5--the-rc-boundary">Stage 5 — The R/C++ boundary<a class="anchor" aria-label="anchor" href="#stage-5--the-rc-boundary"></a></h2>
