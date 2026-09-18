@@ -1,0 +1,8 @@
+# Generated from src/Makevars.in by ./configure (or ./configure.win).
+# Do not edit src/Makevars -- edit this file.
+
+CXX_STD = CXX20
+
+PKG_CPPFLAGS = -I. @GMP_CFLAGS@
+PKG_CXXFLAGS = @PTHREAD@
+PKG_LIBS = @GMP_LIBS@ @PTHREAD@

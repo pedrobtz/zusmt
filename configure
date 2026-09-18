@@ -1,0 +1,13 @@
+#!/bin/sh
+# Generates src/Makevars. See tools/gmp.sh for the probes.
+set -eu
+
+. ./tools/gmp.sh
+
+sed -e "s|@GMP_CFLAGS@|${GMP_CFLAGS}|g" \
+    -e "s|@GMP_LIBS@|${GMP_LIBS}|g" \
+    -e "s|@PTHREAD@|${PTHREAD}|g" \
+    src/Makevars.in > src/Makevars
+
+echo "**  wrote     : src/Makevars"
+exit 0

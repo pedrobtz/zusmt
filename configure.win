@@ -1,0 +1,15 @@
+#!/bin/sh
+# Generates src/Makevars.win. Same probes as ./configure: under Rtools the
+# mingw toolchain is expected to supply GMP on its default search path, which
+# is exactly what roadmap.md Stage 1 set out to verify.
+set -eu
+
+. ./tools/gmp.sh
+
+sed -e "s|@GMP_CFLAGS@|${GMP_CFLAGS}|g" \
+    -e "s|@GMP_LIBS@|${GMP_LIBS}|g" \
+    -e "s|@PTHREAD@|${PTHREAD}|g" \
+    src/Makevars.in > src/Makevars.win
+
+echo "**  wrote     : src/Makevars.win"
+exit 0

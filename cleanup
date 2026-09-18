@@ -1,0 +1,3 @@
+#!/bin/sh
+rm -rf src/Makevars src/Makevars.win conftest conftest.cc conftest.log \
+       conftest.exe conftest.dSYM
