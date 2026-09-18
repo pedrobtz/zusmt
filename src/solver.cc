@@ -132,18 +132,14 @@ extern "C" SEXP C_solver_check(SEXP xp) {
         return Rf_mkString(result);
     }));
 
-    // Deliberately outside the firewall: R_CheckUserInterrupt() longjmps when
-    // an interrupt really is pending, and this is the first point at which no
-    // C++ frame is alive for it to jump over. Doing it inside the lambda
-    // would skip the solver's destructors -- the exact hazard this file is
-    // organised around.
+    // No R_CheckUserInterrupt() here, deliberately. It would be a no-op: the
+    // poll that noticed the interrupt is what consumed R's pending flag, so
+    // by this point there is nothing left for it to raise. Measured, not
+    // assumed -- tests/testthat/test-interrupt.R pins it.
     //
-    // It returns normally when nothing is pending, which is the case under
-    // the test hook, so "interrupted" is observable in tests without a real
-    // Ctrl-C being involved.
-    if (zusmt::interrupt_was_requested()) {
-        R_CheckUserInterrupt();
-    }
+    // Delivery happens in solver_check() in R, which signals an interrupt
+    // condition of its own. This function's contract is to *report*
+    // "interrupted", not to raise it.
     UNPROTECT(1);
     return answer;
 }

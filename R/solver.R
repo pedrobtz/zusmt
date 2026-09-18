@@ -22,15 +22,24 @@ solver_check <- function(solver) {
     # So the interrupt has to be re-signalled here, at R level, or the user
     # would press Ctrl-C and get a return value -- something a real interrupt
     # never does.
+    # sys.call(), not sys.call(-1): the condition should name the function that
+    # signalled it, the way stop() and warning() do. sys.call(-1) would name
+    # whatever called solver_check(), attributing the interrupt to the user's
+    # own wrapper.
     cond <- structure(
       class = c("interrupt", "condition"),
-      list(message = "solve interrupted", call = sys.call(-1))
+      list(message = "solve interrupted", call = sys.call())
     )
     signalCondition(cond)
 
-    # Unhandled: signalCondition() returns, so turn it into an error rather
-    # than let the call succeed with a value.
-    stop("solve interrupted", call. = FALSE)
+    # Nothing handled it -- signalCondition() returns rather than unwinding --
+    # so raise an error, because the one thing this must not do is hand back a
+    # value. Note the divergence from a real Ctrl-C, which is deliberate: this
+    # fallback is an error, so tryCatch(error = ) will catch what began as an
+    # interrupt. Matching R exactly would mean setting R's internal pending
+    # flag (Rinterface.h on Unix, UserBreak on Windows), which is not worth
+    # reaching into for this.
+    stop("solve interrupted")
   }
 
   result
