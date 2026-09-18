@@ -17,7 +17,7 @@ namespace opensmt {
         char *reason;
     public:
         strConvException(const char *reason_) {
-            int res = zusmt::asprintf(&reason, "Error converting string to rational.  %s is not a legal rational", reason_);
+            int res = zusmt::alloc_printf(&reason, "Error converting string to rational.  %s is not a legal rational", reason_);
             assert(res >= 0);
             (void) res;
         }

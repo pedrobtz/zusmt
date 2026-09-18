@@ -220,7 +220,7 @@ FastRational get_multiplicand(const std::vector<FastRational>& reals)
         char *buf_new;
 
         for (int j = 0; j < dens.size(); j++) {
-            zusmt::asprintf(&buf_new, "%s%s%s", buf, dens[j].get_str().c_str(),
+            zusmt::alloc_printf(&buf_new, "%s%s%s", buf, dens[j].get_str().c_str(),
                      j == dens.size() - 1 ? "" : ", ");
             free(buf);
             buf = buf_new;

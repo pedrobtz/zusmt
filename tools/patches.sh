@@ -166,6 +166,14 @@ echo "    LLP64 (Windows long is 32-bit):"
 patch_exact common/numbers/FastRational.h \
   '/static_assert(sizeof(long) == 8);/d; s|return mpq_class{static_cast<long>(num), static_cast<long>(den)};|return mpq_class{static_cast<long>(num), static_cast<unsigned long>(den)};|' \
   'getMpq(): denominator through unsigned long, not long'
+#    The same width difference one file over, without a correctness hazard
+#    behind it: PolynomialT::size() is declared std::size_t and defined
+#    unsigned long -- one type on LP64, two on LLP64, where the definition
+#    then matches no declaration. poly.size() already returns std::size_t and
+#    was being narrowed on the way out.
+patch_exact common/polynomials/Polynomial.h \
+  's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
+  'size(): definition must say std::size_t, not unsigned long'
 
 # 9. Functions that are POSIX or GNU rather than standard, and one signature
 #    that only mismatches under LLP64. All found by the Windows leg.
@@ -176,23 +184,21 @@ echo "    POSIX/GNU functions absent on Windows:"
 #    rule from mangling snprintf.
 rule 'dprintf(STDERR_FILENO -> REprintf' 'dprintf[[:space:]]*\([[:space:]]*STDERR_FILENO[[:space:]]*,' \
   's/dprintf[[:space:]]*([[:space:]]*STDERR_FILENO[[:space:]]*,[[:space:]]*/REprintf(/g'
-#    asprintf() is a GNU extension. The shim implements it with vsnprintf and
-#    malloc, and is used on every platform so the call sites behave the same
-#    everywhere rather than only being fixed where they failed to compile.
-rule 'asprintf -> zusmt::asprintf' '(^|[^_:[:alnum:]])asprintf[[:space:]]*\(' \
-  's/\([^_:[:alnum:]]\)asprintf[[:space:]]*(/\1zusmt::asprintf(/g; s/^asprintf[[:space:]]*(/zusmt::asprintf(/g'
-#    size() is declared std::size_t and defined unsigned long. Those are the
-#    same type on LP64 and different on Win64, where the definition then
-#    matches no declaration.
-patch_exact common/polynomials/Polynomial.h \
-  's/^unsigned long PolynomialT<VarType>::size() const {/std::size_t PolynomialT<VarType>::size() const {/' \
-  'size(): definition must say std::size_t, not unsigned long'
+#    asprintf() is a GNU extension (15 call sites in 8 files). The shim
+#    implements it with vsnprintf and malloc, and is used on every platform so
+#    the call sites behave the same everywhere rather than only being fixed
+#    where they failed to compile.
+#    The '_' in the negated class is load-bearing, as it is in rule 2: it
+#    keeps this off NumberUtils.h's gmp_asprintf(), which is GMP's own and
+#    perfectly portable. Rewriting that would break a working call.
+rule 'asprintf -> zusmt::alloc_printf' '(^|[^_:[:alnum:]])asprintf[[:space:]]*\(' \
+  's/\([^_:[:alnum:]]\)asprintf[[:space:]]*(/\1zusmt::alloc_printf(/g; s/^asprintf[[:space:]]*(/zusmt::alloc_printf(/g'
 
 # 10. Make the shim visible. Prepending the include is more portable than a
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0
-for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|asprintf)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
+for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_printf)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
   grep -q '#include <r_compat.h>' "${f}" && continue
   printf '#include <r_compat.h>\n' > "${f}.patched"
   cat "${f}" >> "${f}.patched"

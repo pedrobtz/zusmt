@@ -42,7 +42,7 @@ inline constexpr LVRef LVRef::Undef = LVRef { INT32_MAX };
 
 inline unsigned getVarId(LVRef ref) { return ref.x; }
 // For debugging
-inline char* printVar (LVRef r) { char* str; int written = zusmt::asprintf(&str, "v%d", r.x); assert(written >= 0); (void)written; return str; }
+inline char* printVar (LVRef r) { char* str; int written = zusmt::alloc_printf(&str, "v%d", r.x); assert(written >= 0); (void)written; return str; }
 
 struct LVRefHash {
     uint32_t operator() (const LVRef& s) const {return s.x; }

@@ -102,7 +102,7 @@ void zusmt::pseudo_srand(unsigned int seed) {
     rng_state() = (seed == 0u) ? 2463534242u : seed;
 }
 
-int zusmt::asprintf(char ** out, char const * fmt, ...) {
+int zusmt::alloc_printf(char ** out, char const * fmt, ...) {
     if (out == nullptr) return -1;
     *out = nullptr;
 

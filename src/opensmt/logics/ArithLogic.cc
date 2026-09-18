@@ -1164,7 +1164,7 @@ std::string ArithLogic::printTerm_(PTRef tr, bool ext, bool safe) const {
             den[j] = '\0';
             char * tmp;
             std::stringstream str;
-            int written = is_neg ? zusmt::asprintf(&tmp, "(/ (- %s) %s)", nom, den) : zusmt::asprintf(&tmp, "(/ %s %s)", nom, den);
+            int written = is_neg ? zusmt::alloc_printf(&tmp, "(/ (- %s) %s)", nom, den) : zusmt::alloc_printf(&tmp, "(/ %s %s)", nom, den);
             assert(written >= 0);
             (void)written;
             str << tmp;

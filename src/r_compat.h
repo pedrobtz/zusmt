@@ -28,11 +28,12 @@ std::ostream & rerr();
 // whole point -- a solver bug must not take the user's session with it.
 [[noreturn]] void fatal(char const * what);
 
-// Replaces GNU asprintf(), which mingw does not have. Same contract: prints
+// Replaces GNU asprintf(), which mingw does not have. Named alloc_printf
+// rather than asprintf so the shim never shadows the libc name. Same contract: prints
 // into a freshly malloc'd buffer that the caller free()s, returns the length
 // or -1. Used on every platform rather than only Windows, so the vendored
 // call sites have one behaviour everywhere.
-int asprintf(char ** out, char const * fmt, ...);
+int alloc_printf(char ** out, char const * fmt, ...);
 
 // Replaces rand()/srand(). Self-contained xorshift rather than R's RNG: these
 // call sites are heuristic tie-breaks inside the solver, and reaching into

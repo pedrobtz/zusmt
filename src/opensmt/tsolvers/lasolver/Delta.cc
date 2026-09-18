@@ -50,7 +50,7 @@ void Delta::print(std::ostream & out) const {
 char * Delta::printValue() const {
     char * out;
     int written = -1;
-    written = zusmt::asprintf(&out, "(%s | %s)",
+    written = zusmt::alloc_printf(&out, "(%s | %s)",
                        r.get_str().c_str(),
                        d.get_str().c_str());
     assert(written >= 0);
