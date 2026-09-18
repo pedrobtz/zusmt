@@ -73,17 +73,54 @@ try_build() {
     -o conftest >conftest.log 2>&1
 }
 
+# GMP's headers must be included as *system* headers, not with -I.
+#
+# gmpxx.h 6.3.0 declares its literal operators as `operator "" _mpz`, with a
+# space, which clang 18+ deprecates (-Wdeprecated-literal-operator). R CMD
+# check promotes compiler output during install to "significant warnings" and
+# a WARNING overall, so on macOS -- where Homebrew's prefix is a *user*
+# include path, unlike /usr/include on Linux -- three warnings from a header
+# this package does not own failed the whole check leg. -isystem suppresses
+# diagnostics from that directory, which is what it is for. It matters more
+# once ~90 vendored OpenSMT files include gmpxx.h.
+to_isystem() {
+  _out=""
+  for _tok in $1; do
+    case "${_tok}" in
+      -I?*) _out="${_out} -isystem ${_tok#-I}" ;;
+      *)    _out="${_out} ${_tok}" ;;
+    esac
+  done
+  printf '%s' "${_out# }"
+}
+
 probe() {
   _cflags="$1"
   _libs="$2"
-  for _pt in "" "-pthread"; do
-    if try_build "${_cflags}" "${_libs}" "${_pt}"; then
-      GMP_CFLAGS="${_cflags}"
-      GMP_LIBS="${_libs}"
-      PTHREAD="${_pt}"
-      echo "**  GMP found  : cflags='${GMP_CFLAGS}' libs='${GMP_LIBS}' pthread='${PTHREAD}'"
-      return 0
+  _alt=$(to_isystem "${_cflags}")
+
+  # Prefer the -isystem form; fall back to -I for a compiler that rejects it.
+  if [ "${_alt}" != "${_cflags}" ]; then
+    _forms="isystem plain"
+  else
+    _forms="plain"
+  fi
+
+  for _form in ${_forms}; do
+    if [ "${_form}" = "isystem" ]; then
+      _cf="${_alt}"
+    else
+      _cf="${_cflags}"
     fi
+    for _pt in "" "-pthread"; do
+      if try_build "${_cf}" "${_libs}" "${_pt}"; then
+        GMP_CFLAGS="${_cf}"
+        GMP_LIBS="${_libs}"
+        PTHREAD="${_pt}"
+        echo "**  GMP found  : cflags='${GMP_CFLAGS}' libs='${GMP_LIBS}' pthread='${PTHREAD}'"
+        return 0
+      fi
+    done
   done
   echo "**  no       : cflags='${_cflags}' libs='${_libs}'"
   return 1

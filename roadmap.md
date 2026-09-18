@@ -51,12 +51,22 @@ CI configuration *before* importing 90 source files. Built:
   with a destructor is alive when `Rf_error()` longjmps.
 - `SystemRequirements: GMP (>= 5.0.0), C++20`, so pak installs `libgmp-dev` on the Linux legs.
 
-Open questions this run answers, in order of risk:
+### What the first CI run established (PR #1)
 
-1. **Windows/Rtools** — does the mingw toolchain supply `libgmpxx` as well as `libgmp`? If not,
-   Stage 2 stops until the answer is found; it cannot be fixed later.
-2. **macOS runner** — is GMP present at all, and if so under which prefix?
-3. **The r-devel containers** — clang 23 and GCC 16 on C++20, compilers OpenSMT does not test against.
+1. **Windows/Rtools supplies both `libgmp` and `libgmpxx`**, on the compiler's default search path —
+   no `-I`, no `-L`, no download in `configure.win`. This was the question that could have stopped
+   the vendoring outright, and it is answered: green.
+2. **macOS needs GMP's headers included as *system* headers.** The leg failed, and not on our code:
+   gmpxx 6.3.0 declares `operator "" _mpz` with a space, which clang 18+ deprecates
+   (`-Wdeprecated-literal-operator`). `R CMD check` promotes install-time compiler output to
+   "significant warnings", so three warnings from a header we do not own failed the leg. Linux never
+   sees it because `/usr/include` is already a system path; Homebrew's prefix is not. `tools/gmp.sh`
+   now converts discovered `-I<dir>` to `-isystem <dir>`, with a `-I` fallback. This would have been
+   ~90x worse after vendoring, once every OpenSMT translation unit includes `gmpxx.h`.
+3. **The r-devel containers pass**: clang 23 and GCC 16 both build C++20 with GMP, as do ubuntu
+   release and oldrel-1.
+
+Exit: green on all seven legs. Currently six of seven, with the macOS fix pushed and re-running.
 
 ### CI (adopted: [pedrobtz/r-actions](https://github.com/pedrobtz/r-actions))
 
