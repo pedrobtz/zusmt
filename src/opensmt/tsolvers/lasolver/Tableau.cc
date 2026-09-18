@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2018-2022, Martin Blicha <martin.blicha@gmail.com>
  *
@@ -191,26 +192,26 @@ bool Tableau::isQuasiBasic(LVRef v) const {
 }
 
 void Tableau::print() const {
-    std::cout << "Rows:\n";
+    zusmt::rout() << "Rows:\n";
     for (unsigned i = 0; i != rows.size(); ++i) {
         if (!rows[i]) { continue; }
-        std::cout << "Var of the row: " << i << ';';
+        zusmt::rout() << "Var of the row: " << i << ';';
         for (auto const & term : this->getRowPoly(LVRef{i})) {
-            std::cout << "( " << term.coeff << " | " << term.var.x << " ) ";
+            zusmt::rout() << "( " << term.coeff << " | " << term.var.x << " ) ";
         }
-        std::cout << '\n';
+        zusmt::rout() << '\n';
     }
-    std::cout << '\n';
-    std::cout << "Columns:\n";
+    zusmt::rout() << '\n';
+    zusmt::rout() << "Columns:\n";
     for (unsigned i = 0; i != cols.size(); ++i) {
         if (!cols[i]) { continue; }
-        std::cout << "Var of the column: " << i << "; Contains: ";
+        zusmt::rout() << "Var of the column: " << i << "; Contains: ";
         for (auto var : getColumn(LVRef{i})) {
-            std::cout << var.x << ' ';
+            zusmt::rout() << var.x << ' ';
         }
-        std::cout << '\n';
+        zusmt::rout() << '\n';
     }
-    std::cout << '\n';
+    zusmt::rout() << '\n';
 }
 
 bool Tableau::checkConsistency() const {

@@ -67,12 +67,12 @@ for d in ${PRUNE}; do
   rm -rf "${vendor:?}/${d}"
 done
 
-# The CMake build files describe a build this package deliberately does not
-# use -- R compiles src/ with its own toolchain. Leaving them in-tree invites
-# someone to edit the wrong thing.
-echo "==> removing CMake build files"
-find "${vendor}" -name CMakeLists.txt -delete
-find "${vendor}" -name '*.cmake.in' -delete
+# The CMakeLists.txt files are KEPT, despite this package not using CMake.
+# They are the only authoritative statement of which sources upstream
+# actually compiles, and that is not the same as "every .cc in the tree":
+# v2.9.2 ships bvsolver/ and logics/BVLogic.cc but comments both out of the
+# build, and they do not compile (BVLogic is left an incomplete type).
+# tools/objects.sh reads these files to build the object list.
 
 # The SMT-LIB parser. Upstream generates these at build time; a CRAN package
 # cannot, so they are generated here and committed.
@@ -82,6 +82,12 @@ echo "==> generating the SMT-LIB parser (bison $(${BISON} --version | head -1 | 
   "${BISON}" --defines=smt2newparser.hh -o smt2newparser.cc smt2newparser.yy
   "${FLEX}" -o smt2newlexer.cc smt2newlexer.ll
 )
+
+# Everything upstream does that R forbids -- console writes, the system RNG,
+# process termination -- is rewritten here, before the checksums are taken, so
+# the recorded tree is the patched one and verify checks what is compiled.
+echo "==> applying R-hosting patches"
+"${here}/tools/patches.sh"
 
 # Provenance and checksums. checksums.sha256 is what tools/vendor/verify
 # checks and what the vendor.yml workflow requires a PR to update alongside
@@ -94,14 +100,22 @@ mkdir -p "${meta}"
   printf 'commit\t%s\n' "${sha}"
   printf 'committed\t%s\n' "${date}"
   printf 'pruned\t%s\n' "${PRUNE}"
-  printf 'removed\tCMakeLists.txt, *.cmake.in\n'
+  printf 'patched\ttools/patches.sh (console output, RNG, process exit)\n'
   printf 'generated\tparsers/smt2new/smt2newparser.cc, smt2newparser.hh, smt2newlexer.cc\n'
   printf 'bison\t%s\n' "$("${BISON}" --version | head -1)"
   printf 'flex\t%s\n' "$("${FLEX}" --version)"
-  printf 'files\t%s\n' "$(find "${vendor}" -type f | wc -l | tr -d ' ')"
+  printf 'files\t%s\n' "$(find "${vendor}" -type f ! -name '*.o' ! -name '*.so' ! -name '*.dll' ! -name '*.dylib' ! -name '*.a' | wc -l | tr -d ' ')"
 } > "${meta}/manifest.tsv"
 
-(cd "${here}" && find src/opensmt -type f | LC_ALL=C sort | xargs shasum -a 256) \
+# Build artifacts are excluded: R compiles in place, so a build leaves .o
+# files inside src/opensmt/, and recording them would make the checksums
+# depend on whether the tree had been built.
+(cd "${here}" && find src/opensmt -type f ! -name '*.o' ! -name '*.so' ! -name '*.dll' ! -name '*.dylib' ! -name '*.a' | LC_ALL=C sort | xargs shasum -a 256) \
   > "${meta}/checksums.sha256"
 
-echo "==> vendored $(find "${vendor}" -type f | wc -l | tr -d ' ') files from ${OPENSMT_VERSION} (${sha})"
+# The build has to follow the tree: a bump that adds or drops a source file
+# must update src/Makevars.in, or the new file silently never gets compiled.
+echo "==> regenerating the object list"
+"${here}/tools/objects.sh"
+
+echo "==> vendored $(find "${vendor}" -type f ! -name '*.o' ! -name '*.so' ! -name '*.dll' ! -name '*.dylib' ! -name '*.a' | wc -l | tr -d ' ') files from ${OPENSMT_VERSION} (${sha})"

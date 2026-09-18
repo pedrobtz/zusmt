@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -699,7 +700,7 @@ void Egraph::backtrackToStackSize ( size_t size ) {
     //
     // Restore state at previous backtrack point
     //
-//    printf("stack size %d > %d\n", undo_stack_term.size(), size);
+//    Rprintf("stack size %d > %d\n", undo_stack_term.size(), size);
     while (undo_stack_main.size_() > size) {
         Undo u = undo_stack_main.last();
         oper_t last_action = u.oper;
@@ -1277,7 +1278,7 @@ void Egraph::faGarbageCollect() {
 #endif
     relocAll(to);
     if (config.verbosity() >= 10)
-        printf("Garbage collection:   %12d bytes => %12d bytes|\n",
+        Rprintf("Garbage collection:   %12d bytes => %12d bytes|\n",
                forbid_allocator.size()*ELAllocator::Unit_Size, to.size()*ELAllocator::Unit_Size);
     to.moveTo(forbid_allocator);
 #ifdef GC_DEBUG

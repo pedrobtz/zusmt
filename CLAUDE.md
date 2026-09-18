@@ -11,12 +11,10 @@ on Linux, macOS and Windows (see the CI matrix in [R-CMD-check.yaml](.github/wor
 
 ## Current state
 
-Stage 2 of [roadmap.md](roadmap.md) is done: OpenSMT v2.9.2 is bundled under `src/opensmt/` (238
-files), but **nothing compiles it yet** — `src/Makevars.in` still builds only `init.cc` and
-`toolchain.cc`, because R compiles `src/` top level and not subdirectories unless `OBJECTS` says so.
-Wiring that up is Stage 3. `smt_toolchain()` in [src/toolchain.cc](src/toolchain.cc) is a Stage 1
-probe, not a feature, and goes away once the solver replaces it. Read `roadmap.md` before starting
-work — it says which stage the next piece belongs to.
+Stages 1–4 of [roadmap.md](roadmap.md) are done: OpenSMT v2.9.2 is bundled, compiled, patched for R
+hosting, and solves from R. `smoke_solve()` (internal, [src/smoke.cc](src/smoke.cc)) decides two
+tiny QF_UF problems and is scaffolding — the real API is Stage 6. `smt_toolchain()` likewise dates
+from Stage 1. Read `roadmap.md` before starting work; it says which stage the next piece belongs to.
 
 ## Vendored sources
 
@@ -28,6 +26,17 @@ both exist to catch exactly that, and a hand edit is lost at the next bump.
 BISON=/usr/local/opt/bison/bin/bison ./tools/vendor.sh   # macOS system bison is 2.3; upstream needs >= 3.0
 ./tools/vendor/verify
 ```
+
+`tools/vendor.sh` runs three steps after the import, and each matters:
+
+- `tools/patches.sh` rewrites what R forbids — console writes, the system RNG, `exit`/`abort` — onto
+  the shim in [src/r_compat.h](src/r_compat.h). Every rule asserts it changed something, so a bump
+  that moves a call site fails the re-vendor rather than silently leaving it.
+- `tools/objects.sh` regenerates the object list in `src/Makevars.in` **from upstream's
+  CMakeLists.txt files**, not from `find`: v2.9.2 ships four `.cc` files it does not build, and they
+  do not compile.
+- checksums are taken last, over the patched tree, excluding `.o` files — R compiles in place, so a
+  built tree carries objects inside `src/opensmt/`.
 
 Re-running on a clean checkout must leave `git status` clean — that is the reproducibility property
 the guard depends on. A PR that changes a file under `src/opensmt/` without changing

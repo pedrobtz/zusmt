@@ -1,3 +1,4 @@
+#include <r_compat.h>
 #include "ArithLogic.h"
 
 #include <common/ApiException.h>
@@ -58,7 +59,7 @@ namespace {
 
     class SimplifyConstDiv : public SimplifyConst {
         void Op(Number & s, Number const & v) const {
-            if (v == 0) { printf("explicit div by zero\n"); }
+            if (v == 0) { Rprintf("explicit div by zero\n"); }
             s /= v;
         }
         Number getIdOp() const { return 1; }
@@ -1059,7 +1060,7 @@ void SimplifyConstDiv::constSimplify(SymRef s, vec<PTRef> const & terms, SymRef 
     assert(terms_new.size() == 0);
     assert(terms.size() <= 2);
     if (terms.size() == 2 && l.isZero(terms[1])) {
-        printf("Explicit div by zero\n");
+        Rprintf("Explicit div by zero\n");
         assert(false);
     }
     if (terms.size() == 1 or l.isOne(terms[terms.size() - 1])) {

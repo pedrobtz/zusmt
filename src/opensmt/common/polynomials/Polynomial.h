@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2018-2022, Martin Blicha <martin.blicha@gmail.com>
  *  Copyright (c) 2022, Antti Hyvarinen <antti.hyvarinen@gmail.com>
@@ -228,9 +229,9 @@ void PolynomialT<VarType>::multiplyBy(Real const & r) {
 template<typename VarType>
 void PolynomialT<VarType>::print() const {
     for (auto & term : poly) {
-        std::cout << term.coeff << " * " << term.var.x << "v + ";
+        zusmt::rout() << term.coeff << " * " << term.var.x << "v + ";
     }
-    std::cout << std::endl;
+    zusmt::rout() << std::endl;
 }
 
 }

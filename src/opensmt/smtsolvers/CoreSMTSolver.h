@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -582,11 +583,11 @@ inline void CoreSMTSolver::printTrace() const
     for (int i = 0; i < trail.size(); i++)
     {
         if (i == 0 || (trail_lim.size() > dl-1 && trail_lim[dl-1] == i))
-            printf("\ndl %d:\n  ", dl++);
+            Rprintf("\ndl %d:\n  ", dl++);
 
-        printf("%s%d ", sign(trail[i]) ? "-" : "", var(trail[i]));
+        Rprintf("%s%d ", sign(trail[i]) ? "-" : "", var(trail[i]));
     }
-    printf("\n");
+    Rprintf("\n");
 }
 
 inline void CoreSMTSolver::insertVarOrder(Var x)
@@ -810,9 +811,9 @@ static inline void check(bool expr) { (void)expr; assert(expr); }
 
 inline void CoreSMTSolver::printLit(Lit l) const
 {
-    std::flush(std::cout);
-    std::cerr << l;
-    std::flush(std::cerr);
+    std::flush(zusmt::rout());
+    zusmt::rerr() << l;
+    std::flush(zusmt::rerr());
 }
 
 
@@ -822,7 +823,7 @@ inline void CoreSMTSolver::printClause(const C& c)
     for (unsigned i = 0; i < c.size(); i++)
     {
         printLit(c[i]);
-        fprintf(stderr, " ");
+        REprintf(" ");
     }
 
     Logic& logic = theory_handler.getLogic();
@@ -834,7 +835,7 @@ inline void CoreSMTSolver::printClause(const C& c)
     }
     PTRef tr = logic.mkOr(std::move(args));
     auto clause = logic.printTerm(tr);
-    fprintf(stderr, "; %s", clause.c_str());
+    REprintf("; %s", clause.c_str());
 }
 
 inline void CoreSMTSolver::populateClauses(vec<PTRef> & clauses, const vec<CRef> & crefs, unsigned int limit)
@@ -947,7 +948,7 @@ inline void CoreSMTSolver::printClause( vec< Lit > & c )
     for (int i = 0; i < c.size(); i++)
     {
         printLit(c[i]);
-        fprintf(stderr, " ");
+        REprintf(" ");
     }
 }
 

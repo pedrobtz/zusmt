@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2013, Simone Fulvio Rollini <simone.rollini@gmail.com>
  *
@@ -14,7 +15,7 @@
 
 namespace opensmt {
 void ProofGraph::verifyLeavesInconsistency() {
-    if (verbose() > 0) { std::cerr << "# Verifying unsatisfiability of the set of proof leaves" << std::endl; }
+    if (verbose() > 0) { zusmt::rerr() << "# Verifying unsatisfiability of the set of proof leaves" << std::endl; }
 
     std::vector<clauseid_t> proofleaves;
     std::vector<clauseid_t> q;
@@ -75,20 +76,20 @@ void ProofGraph::checkClauseSorting(clauseid_t nid) {
 
     for (size_t i = 0; i < n->getClauseSize() - 1; i++) {
         if (var(n->getClause()[i]) > var(n->getClause()[i + 1])) {
-            std::cerr << "Bad clause sorting for clause " << n->getId() << " of type " << n->getType() << '\n';
+            zusmt::rerr() << "Bad clause sorting for clause " << n->getId() << " of type " << n->getType() << '\n';
             printClause(n);
             throw InternalException();
         }
         if (var(n->getClause()[i]) == var(n->getClause()[i + 1]) &&
             sign(n->getClause()[i]) == sign(n->getClause()[i + 1])) {
-            std::cerr << "Repetition of var " << var(n->getClause()[i]) << " in clause " << n->getId() << " of type "
+            zusmt::rerr() << "Repetition of var " << var(n->getClause()[i]) << " in clause " << n->getId() << " of type "
                       << n->getType() << '\n';
             printClause(n);
             throw InternalException();
         }
         if (var(n->getClause()[i]) == var(n->getClause()[i + 1]) &&
             sign(n->getClause()[i]) != sign(n->getClause()[i + 1])) {
-            std::cerr << "Inconsistency on var " << var(n->getClause()[i]) << " in clause " << n->getId() << " of type "
+            zusmt::rerr() << "Inconsistency on var " << var(n->getClause()[i]) << " in clause " << n->getId() << " of type "
                       << n->getType() << '\n';
             printClause(n);
             throw InternalException();
@@ -104,14 +105,14 @@ void ProofGraph::checkClause(clauseid_t nid) {
     // Check if empty clause
     if (isRoot(n)) {
         if (n->getClauseSize() != 0) {
-            std::cerr << n->getId() << " is the sink but not an empty clause" << '\n';
+            zusmt::rerr() << n->getId() << " is the sink but not an empty clause" << '\n';
             printClause(n);
             throw InternalException();
         }
     }
     if (n->getClauseSize() == 0) {
         if (n->getType() == clause_type::CLA_ORIG) {
-            std::cerr << n->getId() << " is an empty original clause" << '\n';
+            zusmt::rerr() << n->getId() << " is an empty original clause" << '\n';
             throw InternalException();
         }
     } else
@@ -126,18 +127,18 @@ void ProofGraph::checkClause(clauseid_t nid) {
             std::vector<Lit> v;
             mergeClauses(n->getAnt1()->getClause(), n->getAnt2()->getClause(), v, n->getPivot());
             if (v.size() != n->getClauseSize()) {
-                std::cerr << "Clause : ";
+                zusmt::rerr() << "Clause : ";
                 printClause(n);
-                std::cerr << " does not correctly derive from antecedents " << '\n';
+                zusmt::rerr() << " does not correctly derive from antecedents " << '\n';
                 printClause(getNode(n->getAnt1()->getId()));
                 printClause(getNode(n->getAnt2()->getId()));
                 throw InternalException();
             }
             for (size_t i = 0; i < n->getClauseSize(); i++)
                 if (n->getClause()[i] != v[i]) {
-                    std::cerr << "Clause : ";
+                    zusmt::rerr() << "Clause : ";
                     printClause(n);
-                    std::cerr << " does not correctly derive from antecedents " << '\n';
+                    zusmt::rerr() << " does not correctly derive from antecedents " << '\n';
                     printClause(getNode(n->getAnt1()->getId()));
                     printClause(getNode(n->getAnt2()->getId()));
                     throw InternalException();
@@ -146,9 +147,9 @@ void ProofGraph::checkClause(clauseid_t nid) {
             std::vector<Lit> & cl = n->getClause();
             for (unsigned u = 0; u < cl.size() - 1; u++)
                 if (var(cl[u]) == var(cl[u + 1])) {
-                    std::cerr << "Clause : ";
+                    zusmt::rerr() << "Clause : ";
                     printClause(n);
-                    std::cerr << " is tautological " << '\n';
+                    zusmt::rerr() << " is tautological " << '\n';
                 }
             // Checks whether both antecedents have the pivot
             short f1 = n->getAnt1()->hasOccurrenceBin(n->getPivot());
@@ -166,7 +167,7 @@ void ProofGraph::checkClause(clauseid_t nid) {
         assert(id < getGraphSize());
         ProofNode * res = getNode(id);
         if (res == NULL) {
-            std::cerr << "Node " << n->getId() << " has resolvent " << id << " null" << '\n';
+            zusmt::rerr() << "Node " << n->getId() << " has resolvent " << id << " null" << '\n';
             throw InternalException();
         } else
             assert(res->getAnt1() == n || res->getAnt2() == n);
@@ -174,7 +175,7 @@ void ProofGraph::checkClause(clauseid_t nid) {
 }
 
 void ProofGraph::checkProof(bool check_clauses) {
-    if (verbose()) { std::cerr << "# Checking proof" << '\n'; }
+    if (verbose()) { zusmt::rerr() << "# Checking proof" << '\n'; }
 
     // Visit top down
     std::deque<clauseid_t> q;
@@ -236,11 +237,11 @@ void ProofGraph::checkProof(bool check_clauses) {
     // Ensure that the same nodes have been visited top-down and bottom-up
     for (unsigned u = 0; u < getGraphSize(); u++) {
         if (isSetVisited1(u) && !isSetVisited2(u)) {
-            std::cerr << "Node " << u << " is unreachable going top-down" << '\n';
+            zusmt::rerr() << "Node " << u << " is unreachable going top-down" << '\n';
             throw InternalException();
         }
         if (!isSetVisited1(u) && isSetVisited2(u)) {
-            std::cerr << "Node " << u << " is unreachable going bottom-up" << '\n';
+            zusmt::rerr() << "Node " << u << " is unreachable going bottom-up" << '\n';
             throw InternalException();
         }
     }
@@ -248,7 +249,7 @@ void ProofGraph::checkProof(bool check_clauses) {
     // Ensure that there are no useless leaves
     for (clauseid_t leave_id : leaves_ids) {
         if (not isSetVisited1(leave_id)) {
-            std::cerr << "Detached leaf" << leave_id << '\n';
+            zusmt::rerr() << "Detached leaf" << leave_id << '\n';
             throw InternalException();
         }
     }

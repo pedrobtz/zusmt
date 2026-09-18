@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /***********************************************************************************[SolverTypes.h]
 Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
 Copyright (c) 2007-2010, Niklas Sorensson
@@ -375,7 +376,7 @@ class CMap
 
     // TMP debug:
     void debug(){
-        printf(" --- size = %d, bucket_count = %d\n", size(), map.bucket_count()); }
+        Rprintf(" --- size = %d, bucket_count = %d\n", size(), map.bucket_count()); }
 };
 
 

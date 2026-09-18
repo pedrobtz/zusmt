@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  *  Copyright (c) 2020-2022, Martin Blicha <martin.blicha@gmail.com>
  *
@@ -368,22 +369,22 @@ void SingleInterpolationComputationContext::checkInterAlgo() const {
         throw ApiException("Please choose 0/1/2/3/4/5 as values for itp_bool_algo");
 
     if (verbose() > 0) {
-        std::cerr << "# Using ";
+        zusmt::rerr() << "# Using ";
 
         if (usingPudlakInterpolation())
-            std::cerr << "Pudlak";
+            zusmt::rerr() << "Pudlak";
         else if (usingMcMillanInterpolation())
-            std::cerr << "McMillan";
+            zusmt::rerr() << "McMillan";
         else if (usingMcMillanPrimeInterpolation())
-            std::cerr << "McMillan'";
+            zusmt::rerr() << "McMillan'";
         else if (usingPSInterpolation())
-            std::cerr << "Proof-Sensitive";
+            zusmt::rerr() << "Proof-Sensitive";
         else if (usingPSWInterpolation())
-            std::cerr << "Weak Proof-Sensitive";
+            zusmt::rerr() << "Weak Proof-Sensitive";
         else if (usingPSSInterpolation())
-            std::cerr << "Strong Proof-Sensitive";
+            zusmt::rerr() << "Strong Proof-Sensitive";
 
-        std::cerr << " for propositional interpolation" << '\n';
+        zusmt::rerr() << " for propositional interpolation" << '\n';
     }
 }
 
@@ -414,7 +415,7 @@ void SingleInterpolationComputationContext::initTSolver() {
 }
 
 bool SingleInterpolationComputationContext::verifyPartialInterpolant(ProofNode const & n) {
-    if (verbose()) std::cout << "; Verifying partial interpolant" << '\n';
+    if (verbose()) zusmt::rout() << "; Verifying partial interpolant" << '\n';
     bool res = verifyPartialInterpolantA(n);
     if (!res) {
         assert(false);
@@ -425,7 +426,7 @@ bool SingleInterpolationComputationContext::verifyPartialInterpolant(ProofNode c
         assert(false);
         throw InternalException("Partial interpolant soundness does not hold for B");
     }
-    if (verbose()) std::cout << "; Partial interpolant is sound" << '\n';
+    if (verbose()) zusmt::rout() << "; Partial interpolant is sound" << '\n';
     return res;
 }
 
@@ -528,7 +529,7 @@ PTRef SingleInterpolationComputationContext::produceSingleInterpolant() {
     std::vector<clauseid_t> DFSv = proofGraph.topolSortingTopDown();
     size_t proof_size = DFSv.size();
 
-    if (verbose() > 0) std::cerr << "; Generating interpolant " << std::endl;
+    if (verbose() > 0) zusmt::rerr() << "; Generating interpolant " << std::endl;
 
     auto PSFunction = needProofStatistics() ? computePSFunction() : nullptr;
 
@@ -578,13 +579,13 @@ PTRef SingleInterpolationComputationContext::produceSingleInterpolant() {
         // getComplexityInterpolant(partial_interp);
         int nbool, neq, nuf, nif;
         logic.collectStats(partial_interp, nbool, neq, nuf, nif);
-        std::cerr << "; Number of boolean connectives: " << nbool << '\n';
-        std::cerr << "; Number of equalities: " << neq << '\n';
-        std::cerr << "; Number of uninterpreted functions: " << nuf << '\n';
-        std::cerr << "; Number of interpreted functions: " << nif << '\n';
+        zusmt::rerr() << "; Number of boolean connectives: " << nbool << '\n';
+        zusmt::rerr() << "; Number of equalities: " << neq << '\n';
+        zusmt::rerr() << "; Number of uninterpreted functions: " << nuf << '\n';
+        zusmt::rerr() << "; Number of interpreted functions: " << nif << '\n';
     }
 
-    if (verbose() > 1) { std::cout << "; Interpolant:\n" << logic.printTerm(rootInterpolant) << '\n'; }
+    if (verbose() > 1) { zusmt::rout() << "; Interpolant:\n" << logic.printTerm(rootInterpolant) << '\n'; }
     return rootInterpolant;
 }
 
@@ -860,9 +861,9 @@ void InterpolationContext::getSingleInterpolant(vec<PTRef> & interpolants, ipart
         assert(sound);
         if (verbose()) {
             if (sound)
-                std::cout << "; Final interpolant is sound" << '\n';
+                zusmt::rout() << "; Final interpolant is sound" << '\n';
             else
-                std::cout << "; Final interpolant is NOT sound" << '\n';
+                zusmt::rout() << "; Final interpolant is NOT sound" << '\n';
         }
     }
 
@@ -894,7 +895,7 @@ bool InterpolationContext::getPathInterpolants(vec<PTRef> & interpolants, std::v
             propertySatisfied &=
                 VerificationUtils(logic).impliesInternal(logic.mkAnd(previous_itp, movedPartitions), next_itp);
             if (not propertySatisfied) {
-                std::cerr << "; Path interpolation does not hold for:\n"
+                zusmt::rerr() << "; Path interpolation does not hold for:\n"
                           << "First interpolant: " << logic.printTerm(previous_itp) << '\n'
                           << "Moved partitions: " << logic.printTerm(movedPartitions) << '\n'
                           << "Second interpolant: " << logic.printTerm(next_itp) << '\n';
@@ -918,7 +919,7 @@ void InterpolationContext::transformProofForCNFInterpolants() {
             return icolor_t::I_UNDEF;
         }); // FIXME: this requires partition mask and can be done only for single interpolant computation
     } else {
-        std::cerr << "; Warning!\n"
+        zusmt::rerr() << "; Warning!\n"
                   << "; Please set McMillan interpolation algorithm to generate interpolants in CNF";
     }
 }
@@ -940,19 +941,19 @@ PTRef InterpolationContext::simplifyInterpolant(PTRef itp) const {
         itp = simplifyUnderAssignment_Aggressive(itp, logic);
     } else {
         if (simplificationLevel > 0) {
-            if (verbose() > 1) { std::cout << "Itp before rewriting max arity: \n" << logic.printTerm(itp) << "\n\n"; }
+            if (verbose() > 1) { zusmt::rout() << "Itp before rewriting max arity: \n" << logic.printTerm(itp) << "\n\n"; }
             itp = rewriteMaxArityClassic(logic, itp);
         }
         if (simplificationLevel == 2) {
             if (verbose() > 1) {
-                std::cout << "Itp before aggressive simplifying: \n" << logic.printTerm(itp) << "\n\n";
+                zusmt::rout() << "Itp before aggressive simplifying: \n" << logic.printTerm(itp) << "\n\n";
             }
             itp = simplifyUnderAssignment(logic, itp);
         }
 
         if (simplificationLevel == 3) {
             if (verbose() > 1) {
-                std::cout << "Itp before aggressive simplifying: \n" << logic.printTerm(itp) << "\n\n";
+                zusmt::rout() << "Itp before aggressive simplifying: \n" << logic.printTerm(itp) << "\n\n";
             }
             itp = simplifyUnderAssignment_Aggressive(itp, logic);
         }

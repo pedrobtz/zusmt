@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -78,8 +79,8 @@ class DimacsParser {
         if      (*in == '-') neg = true, ++in;
         else if (*in == '+') ++in;
         if (*in < '0' || *in > '9') {
-            std::cerr << "PARSE ERROR! Unexpected char: " << *in << std::endl;
-            exit(3);
+            zusmt::rerr() << "PARSE ERROR! Unexpected char: " << *in << std::endl;
+            zusmt::fatal("bundled solver: malformed DIMACS input");
         }
         while (*in >= '0' && *in <= '9')
             val = val*10 + (*in - '0'),
@@ -128,8 +129,8 @@ class DimacsParser {
                 break;
             else if (*in == 'p'){
                 if (!match(in, "p cnf")) {
-                    std::cerr << "PARSE ERROR! Unexpected char: " << *in << endl;
-                    exit(3);
+                    zusmt::rerr() << "PARSE ERROR! Unexpected char: " << *in << endl;
+                    zusmt::fatal("bundled solver: malformed DIMACS input");
                 }
             } else if (*in == 'c' || *in == 'p')
                 skipLine(in);

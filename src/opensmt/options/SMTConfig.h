@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -426,8 +427,8 @@ namespace opensmt {
     void printConfig      ( std::ostream & out );
 
     inline std::ostream & getStatsOut     ( ) { assert( optionTable.has(o_produce_stats) );  return stats_out; }
-    inline std::ostream & getRegularOut   ( ) { return rocset ? out : std::cout; }
-    inline std::ostream & getDiagnosticOut( ) { return docset ? err : std::cerr; }
+    inline std::ostream & getRegularOut   ( ) { return rocset ? out : zusmt::rout(); }
+    inline std::ostream & getDiagnosticOut( ) { return docset ? err : zusmt::rerr(); }
     inline int  getRandomSeed   ( ) const { return optionTable.has(o_random_seed) ? optionTable[o_random_seed]->getValue().numval : 91648253; }
     inline void setProduceModels( ) { insertOption(o_produce_models, new SMTOption(1)); }
     inline bool setRandomSeed(int seed) { insertOption(o_random_seed, new SMTOption(seed)); return true; }

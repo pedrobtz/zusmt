@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
  * Copyright (c) 2021, Antti Hyvarinen <antti.hyvarinen@gmail.com>
  * Copyright (c) 2021, Martin Blicha <martin.blicha@gmail.com>
@@ -189,7 +190,7 @@ namespace opensmt {
             }
         }
 
-//    printf("The literal %s, once converted, will have denominator of length %d and nominator of length %d characters\n", flo, den_l, nom_l);
+//    Rprintf("The literal %s, once converted, will have denominator of length %d and nominator of length %d characters\n", flo, den_l, nom_l);
         char *rat_tmp = (char *) malloc(nom_l + den_l + 2);
         rat_tmp[0] = '\0';
 

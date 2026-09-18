@@ -1,3 +1,4 @@
+#include <r_compat.h>
 //
 // Created by prova on 13.08.19.
 //
@@ -173,7 +174,7 @@ private:
 public:
     explicit LookaheadScoreDeep(const vec<lbool> &assigns, const SMTConfig &c)
             : LookaheadScore(assigns), base_score_round(-1)
-            , buf_LABests(c.randomize_lookahead_bufsz(), assigns, c.randomize_lookahead(), c.getRandomSeed()) {std::cerr << "; Deep score\n";}
+            , buf_LABests(c.randomize_lookahead_bufsz(), assigns, c.randomize_lookahead(), c.getRandomSeed()) {zusmt::rerr() << "; Deep score\n";}
     void setLAValue(Var v, int p0, int p1) override;
 
     double getSolverScore(const LookaheadSMTSolver *solver) override;
@@ -302,7 +303,7 @@ private:
 public:
     explicit LookaheadScoreClassic(const vec<lbool> &assigns, const SMTConfig &c)
             : LookaheadScore(assigns), buf_LABests(c.randomize_lookahead_bufsz(), assigns, c.randomize_lookahead(), c.getRandomSeed())
-              { std::cerr << "; Classic score\n"; }
+              { zusmt::rerr() << "; Classic score\n"; }
 
     void newVar() override;
 

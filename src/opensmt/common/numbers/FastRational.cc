@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
 Fast rationals
 David Monniaux, VERIMAG 2008-2009
@@ -224,7 +225,7 @@ FastRational get_multiplicand(const std::vector<FastRational>& reals)
             free(buf);
             buf = buf_new;
         }
-        printf("Dens size now %lu, and individual are denominators: %s\n", dens.size(), buf);
+        Rprintf("Dens size now %lu, and individual are denominators: %s\n", dens.size(), buf);
         free(buf);
 #endif
         if (dens.size() == 1) {
@@ -245,7 +246,7 @@ FastRational get_multiplicand(const std::vector<FastRational>& reals)
         }
     }
 #ifdef PRINTALOT
-    printf("Multiplicand is %s\n", mult.get_str().c_str());
+    Rprintf("Multiplicand is %s\n", mult.get_str().c_str());
 #endif
     return mult;
 }

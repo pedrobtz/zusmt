@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -33,7 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace opensmt {
   void ASTNode::print(std::ostream& o, int indent) {
           for (int i = 0; i < indent; i++)
-              printf(" ");
+              Rprintf(" ");
           o << "<type: " << typeToStr() << ", value: " << (val != NULL ?  val : "NULL") << ">" << std::endl;
           if (children == NULL) return;
           for (auto i = children->begin(); i != children->end(); i++)

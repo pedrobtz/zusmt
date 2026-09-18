@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -641,26 +642,26 @@ void printAstTermNode(ASTNode const & astNode) {
     ASTType t = astNode.getType();
     if (t == TERM_T) {
         const char* name = (**(astNode.children->begin())).getValue();
-        std::cout << name;
+        zusmt::rout() << name;
     } else if (t == QID_T) {
             ASTNode const * symbolNode = (*(astNode.children->begin()));
             char const * name = symbolNode->getValue();
-            std::cout << name;
+            zusmt::rout() << name;
     } else if ( t == LQID_T ) {
         // Multi-argument term
         auto node_iter = astNode.children->begin();
         const char* name = (**node_iter).getValue(); node_iter++;
-        std::cout << "(";
-        std::cout << name << " ";
+        zusmt::rout() << "(";
+        zusmt::rout() << name << " ";
         bool first = true;
         for (; node_iter != astNode.children->end(); node_iter++) {
             if (not first) {
-                std::cout << " ";
+                zusmt::rout() << " ";
             }
             printAstTermNode(**node_iter);
             first = false;
         }
-        std::cout << ")";
+        zusmt::rout() << ")";
     } else if (t == BANG_T) {
         assert(astNode.children->size() == 2);
         auto ch = astNode.children->begin();
@@ -669,32 +670,32 @@ void printAstTermNode(ASTNode const & astNode) {
         assert(attr_l.getType() == GATTRL_T);
         assert(attr_l.children->size() == 1);
         ASTNode& name_attr = **(attr_l.children->begin());
-        std::cout << "(!";
+        zusmt::rout() << "(!";
         printAstTermNode(named_term);
-        std::cout << " " << name_attr.getValue();
+        zusmt::rout() << " " << name_attr.getValue();
         ASTNode const & sym = **(name_attr.children->begin());
         assert(sym.getType() == SYM_T or sym.getType() == QSYM_T);
-        std::cout << " " << sym.getValue();
-        std::cout << ')';
+        zusmt::rout() << " " << sym.getValue();
+        zusmt::rout() << ')';
     } else if (t == LET_T) {
-        std::cout << "(let ";
+        zusmt::rout() << "(let ";
         auto ch = astNode.children->begin();
         // print bindings
-        std::cout << '(';
+        zusmt::rout() << '(';
         bool first = true;
         for (ASTNode const* vb : *(**ch).children) {
-            if (not first) { std::cout << ' '; };
+            if (not first) { zusmt::rout() << ' '; };
             first = false;
-            std::cout << "(" << vb->getValue() << " ";
+            zusmt::rout() << "(" << vb->getValue() << " ";
             printAstTermNode(**vb->children->begin());
-            std::cout << ")";
+            zusmt::rout() << ")";
         }
-        std::cout << ')';
+        zusmt::rout() << ')';
         // print final term
         ch++;
-        std::cout << ' ';
+        zusmt::rout() << ' ';
         printAstTermNode(**ch);
-        std::cout << ')';
+        zusmt::rout() << ')';
     }
     else {
         throw std::logic_error("Unsupported term type");
@@ -720,14 +721,14 @@ void Interpret::getValue(std::vector<ASTNode*> const & terms)
             comment_formatted("Error parsing the term %s", (**(term.children->begin())).getValue());
     }
     try {
-        std::cout << '(';
+        zusmt::rout() << '(';
         for (auto const & valPair : values) {
-            std::cout << '(';
+            zusmt::rout() << '(';
             printAstTermNode(*valPair.first);
             auto value = logic.printTerm(valPair.second);
-            std::cout << " " << value << ')';
+            zusmt::rout() << " " << value << ')';
         }
-        std::cout << ')' << std::endl;
+        zusmt::rout() << ')' << std::endl;
     }
     catch (std::logic_error & e) {
         reportError("Error in evaluating (get-value) command");
@@ -824,7 +825,7 @@ void Interpret::getModel() {
         ss << printDefinitionSmtlib(safeTempl);
     }
     ss << ')';
-    std::cout << ss.str() << std::endl;
+    zusmt::rout() << ss.str() << std::endl;
 }
 
 /**
@@ -1014,7 +1015,7 @@ void Interpret::comment_formatted(const char* fmt_str, ...) const {
     int d;
     char c1, *t;
     if (config.verbosity() < 2) return;
-    std::cout << "; ";
+    zusmt::rout() << "; ";
 
     va_start(ap, fmt_str);
     while (true) {
@@ -1023,23 +1024,23 @@ void Interpret::comment_formatted(const char* fmt_str, ...) const {
             switch (*fmt_str++) {
             case 's':
                 t = va_arg(ap, char *);
-                std::cout << t;
+                zusmt::rout() << t;
                 break;
             case 'd':
                 d = va_arg(ap, int);
-                std::cout << d;
+                zusmt::rout() << d;
                 break;
             case '%':
-                std::cout << '%';
+                zusmt::rout() << '%';
                 break;
             }
         }
         else if (c1 != '\0')
-            std::cout << c1;
+            zusmt::rout() << c1;
         else break;
     }
     va_end(ap);
-    std::cout << std::endl;
+    zusmt::rout() << std::endl;
 }
 
 
@@ -1048,7 +1049,7 @@ void Interpret::notify_formatted(bool error, const char* fmt_str, ...) const {
     int d;
     char c1, *t;
     if (error)
-        std::cout << "(error \"";
+        zusmt::rout() << "(error \"";
 
     va_start(ap, fmt_str);
     while (true) {
@@ -1057,30 +1058,30 @@ void Interpret::notify_formatted(bool error, const char* fmt_str, ...) const {
             switch (*fmt_str++) {
             case 's':
                 t = va_arg(ap, char *);
-                std::cout << t;
+                zusmt::rout() << t;
                 break;
             case 'd':
                 d = va_arg(ap, int);
-                std::cout << d;
+                zusmt::rout() << d;
                 break;
             case '%':
-                std::cout << '%';
+                zusmt::rout() << '%';
                 break;
             }
         }
         else if (c1 != '\0')
-            std::cout << c1;
+            zusmt::rout() << c1;
         else break;
     }
     va_end(ap);
     if (error)
-        std::cout << "\")" << '\n';
-    std::cout << std::endl;
+        zusmt::rout() << "\")" << '\n';
+    zusmt::rout() << std::endl;
 }
 
 void Interpret::notify_success() const {
     if (config.printSuccess()) {
-        std::cout << "success" << std::endl;
+        zusmt::rout() << "success" << std::endl;
     }
 }
 
@@ -1302,7 +1303,7 @@ void Interpret::getInterpolants(const ASTNode& n)
     for (auto e : exps) {
         ASTNode& c = *e;
         PTRef tr = parseTerm(c, letRecords);
-//        printf("Itp'ing a term %s\n", logic->pp(tr));
+//        Rprintf("Itp'ing a term %s\n", logic->pp(tr));
         grouping.push(tr);
     }
     letRecords.popFrame();

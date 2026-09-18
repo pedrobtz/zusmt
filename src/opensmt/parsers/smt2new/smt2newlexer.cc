@@ -1,3 +1,4 @@
+#include <r_compat.h>
 #line 1 "smt2newlexer.cc"
 
 #line 3 "smt2newlexer.cc"
@@ -1349,10 +1350,10 @@ YY_DECL
 			yyg->yy_start = 1;	/* first start state */
 
 		if ( ! yyin )
-			yyin = stdin;
+			yyin = NULL;  /* zusmt: set by yyset_in(); never read */
 
 		if ( ! yyout )
-			yyout = stdout;
+			yyout = NULL;  /* zusmt: ECHO is unreachable */
 
 		if ( ! YY_CURRENT_BUFFER ) {
 			yyensure_buffer_stack (yyscanner);
@@ -1887,13 +1888,13 @@ YY_RULE_SETUP
 case 89:
 YY_RULE_SETUP
 #line 170 "smt2newlexer.ll"
-{ printf("Syntax error at line %d near %s, \\ not allowed inside | ... |\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); exit(1); }
+{ Rprintf("Syntax error at line %d near %s, \\ not allowed inside | ... |\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal("SMT-LIB syntax error"); }
 	YY_BREAK
 
 case 90:
 YY_RULE_SETUP
 #line 173 "smt2newlexer.ll"
-{ printf( "Syntax error at line %d near %s\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); exit( 1 ); }
+{ Rprintf( "Syntax error at line %d near %s\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal("SMT-LIB syntax error"); }
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
@@ -2727,8 +2728,8 @@ static void yynoreturn yy_fatal_error (const char* msg , yyscan_t yyscanner)
 {
 	struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	(void)yyg;
-	fprintf( stderr, "%s\n", msg );
-	exit( YY_EXIT_FAILURE );
+	REprintf("%s\n", msg );
+	zusmt::fatal("bundled solver: lexer fatal error");
 }
 
 /* Redefine yyless() so it works in section 3 code. */
@@ -2998,8 +2999,8 @@ static int yy_init_globals (yyscan_t yyscanner)
 
 /* Defined in main.c */
 #ifdef YY_STDINIT
-    yyin = stdin;
-    yyout = stdout;
+    yyin = NULL;  /* zusmt: set by yyset_in(); never read */
+    yyout = NULL;  /* zusmt: ECHO is unreachable */
 #else
     yyin = NULL;
     yyout = NULL;

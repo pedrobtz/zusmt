@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*******************************************************************************************[Map.h]
 Copyright (c) 2006-2010, Niklas Sorensson
 
@@ -95,7 +96,7 @@ class Map {
 
         delete [] old;
 
-        // printf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
+        // Rprintf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
     }
 
 
@@ -310,7 +311,7 @@ public:
 
         delete [] old;
 
-        // printf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
+        // Rprintf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
     }
 
 
@@ -467,7 +468,7 @@ class VecKeyMap {
 
         delete [] old;
 
-        // printf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
+        // Rprintf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
     }
 
 

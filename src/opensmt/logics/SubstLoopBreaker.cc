@@ -1,3 +1,4 @@
+#include <r_compat.h>
 //
 // Created by prova on 21.11.19.
 //
@@ -270,12 +271,12 @@ vec<SNRef> SubstLoopBreaker::breakLoops(const std::vector<vec<SNRef>>& loops) {
 
 std::string SubstLoopBreaker::printGraphAndLoops(const vec<SNRef> &startNodes, const std::vector<vec<SNRef>>& loops) {
     if (loops.size() == 0)
-        std::cerr << "No loops\n";
+        zusmt::rerr() << "No loops\n";
     int count = 0;
     for (const vec<SNRef> & loop : loops) {
-        std::cerr << "Loop " << count++ << std::endl;
+        zusmt::rerr() << "Loop " << count++ << std::endl;
         for (SNRef snr: loop)
-            std::cerr << "  " << logic.pp(sna[snr].getTr()) << std::endl;
+            zusmt::rerr() << "  " << logic.pp(sna[snr].getTr()) << std::endl;
     }
     std::stringstream ss;
 

@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -249,7 +250,7 @@ BitBlaster::bbTerm(PTRef tr)
     //
     // Exit if term is not handled
     //
-    std::cerr << "term not handled (yet ?): " << logic.printTerm(tr) << "\n";
+    zusmt::rerr() << "term not handled (yet ?): " << logic.printTerm(tr) << "\n";
     return BVRef_Undef;
 }
 
@@ -2154,7 +2155,7 @@ BitBlaster::notifyEqualities()
         }
     }
 
-    std::cerr << "; Added " << added_eqs << " equalities for bind" << '\n';
+    zusmt::rerr() << "; Added " << added_eqs << " equalities for bind" << '\n';
 
     last_refined = refined.size();
 

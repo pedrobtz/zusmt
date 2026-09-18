@@ -1,3 +1,4 @@
+#include <r_compat.h>
 //
 // Created by prova on 06.09.19.
 //
@@ -89,8 +90,8 @@ Delta const Simplex::overBound(LVRef v) const {
         return (Delta(model->Lb(v) - model->read(v)));
     }
     assert(false);
-    printf("Problem in overBound, LRASolver.C:%d\n", __LINE__);
-    exit(1);
+    Rprintf("Problem in overBound, LRASolver.C:%d\n", __LINE__);
+    zusmt::fatal("bundled solver: inconsistent bound in Simplex::overBound");
 }
 
 bool Simplex::isUnbounded(LVRef v) const {
@@ -365,11 +366,11 @@ bool Simplex::invariantHolds() const {
         if (isModelOutOfBounds(var)) {
             rval = false;
             if (isModelOutOfUpperBound(var)) {
-                printf("Non-basic (column) LRA var %s has value %s > %s (upper bound)\n", printVar(var),
+                Rprintf("Non-basic (column) LRA var %s has value %s > %s (upper bound)\n", printVar(var),
                        model->read(var).printValue(), model->Ub(var).printValue());
             }
             if (isModelOutOfLowerBound(var)) {
-                printf("Non-basic (column) LRA var %s has value %s < %s (lower bound)\n", printVar(var),
+                Rprintf("Non-basic (column) LRA var %s has value %s < %s (lower bound)\n", printVar(var),
                        model->read(var).printValue(), model->Lb(var).printValue());
             }
             assert(false);

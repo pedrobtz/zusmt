@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*********************************************************************
 Author: Antti Hyvarinen <antti.hyvarinen@gmail.com>
 
@@ -206,7 +207,7 @@ bool SimpSMTSolver::addOriginalSMTClause(vec<Lit> && smt_clause, pair<CRef, CRef
             && smt_clause.size( ) == 1   // Consider unit clauses
             && var(smt_clause[0]) >= 2 ) // Don't consider true/false
     {
-        std::cerr << "XXX skipped handling of unary theory literal?" << '\n';
+        zusmt::rerr() << "XXX skipped handling of unary theory literal?" << '\n';
     }
     int nclauses = clauses.size();
     if (!CoreSMTSolver::addOriginalClause_(std::move(smt_clause), inOutCRefs))
@@ -447,7 +448,7 @@ bool SimpSMTSolver::backwardSubsumptionCheck(bool verbose)
         if (c.mark()) continue;
 
         if (verbose && config.verbosity() > 9 && cnt++ % 1000 == 0)
-            printf("; Subsumption left: %10d (%10d subsumed, %10d deleted literals)\r", subsumption_queue.size(), subsumed, deleted_literals);
+            Rprintf("; Subsumption left: %10d (%10d subsumed, %10d deleted literals)\r", subsumption_queue.size(), subsumed, deleted_literals);
 
         assert(c.size() > 1 || value(c[0]) == l_True);    // Unit-clauses should have been propagated before this point.
 
@@ -700,7 +701,7 @@ bool SimpSMTSolver::eliminate(bool turn_off_elim)
     while (n_touched > 0 || bwdsub_assigns < trail.size() || elim_heap.size() > 0)
     {
         gatherTouchedClauses();
-        // printf("  ## (time = %6.2f s) BWD-SUB: queue = %d, trail = %d\n", cpuTime(), subsumption_queue.size(), trail.size() - bwdsub_assigns);
+        // Rprintf("  ## (time = %6.2f s) BWD-SUB: queue = %d, trail = %d\n", cpuTime(), subsumption_queue.size(), trail.size() - bwdsub_assigns);
         if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size()) &&
                 !backwardSubsumptionCheck(true))
         {
@@ -718,7 +719,7 @@ bool SimpSMTSolver::eliminate(bool turn_off_elim)
             goto cleanup;
         }
 
-        // printf("  ## (time = %6.2f s) ELIM: vars = %d\n", cpuTime(), elim_heap.size());
+        // Rprintf("  ## (time = %6.2f s) ELIM: vars = %d\n", cpuTime(), elim_heap.size());
         while (!elim_heap.empty())
         {
             Var elim = elim_heap.removeMin();
@@ -858,7 +859,7 @@ void SimpSMTSolver::garbageCollect()
     relocAll(to);
     CoreSMTSolver::relocAll(to);
 //    if (config.verbosity() >= 2)
-//        fprintf(stderr, ";|  Garbage collection:   %12d bytes => %12d bytes             |\n",
+//        REprintf(";|  Garbage collection:   %12d bytes => %12d bytes             |\n",
 //               ca.size()*ClauseAllocator::Unit_Size, to.size()*ClauseAllocator::Unit_Size);
     to.moveTo(ca);
 }

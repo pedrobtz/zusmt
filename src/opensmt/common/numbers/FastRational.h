@@ -1,3 +1,4 @@
+#include <r_compat.h>
 /*
 Fast rationals
 David Monniaux, VERIMAG 2008-2009
@@ -595,7 +596,7 @@ template<uword> uword gcd(uword a, uword b);
     } while (0)                                \
 
 #define CHECK_POSITIVE(value) \
-    if (value < 1) abort()
+    if (value < 1) zusmt::fatal("bundled solver: non-positive value where positive required")
 #define CHECK_UWORD(var, value) \
     do { \
         CHECK_POSITIVE(value); \

@@ -1,3 +1,6 @@
 #!/bin/sh
 rm -rf src/Makevars src/Makevars.win conftest conftest.cc conftest.log \
        conftest.exe conftest.dSYM
+# R compiles the vendored tree in place, so objects land under src/opensmt/.
+find src -name '*.o' -delete
+rm -f src/zusmt.so src/zusmt.dll
