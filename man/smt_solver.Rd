@@ -7,9 +7,9 @@
 smt_solver(logic = "QF_UF")
 }
 \arguments{
-\item{logic}{An SMT-LIB logic name. One of \code{"QF_UF"} (uninterpreted
-functions), \code{"QF_LIA"} / \code{"QF_LRA"} (linear integer / real arithmetic),
-\code{"QF_UFLIA"}, \code{"QF_UFLRA"}, \code{"QF_IDL"}, \code{"QF_RDL"} or \code{"QF_AX"} (arrays).}
+\item{logic}{An SMT-LIB logic name; \code{\link[=smt_logics]{smt_logics()}} returns the ones this
+package supports. They cover uninterpreted functions, linear integer and
+real arithmetic, their combinations, difference logic and arrays.}
 }
 \value{
 A solver handle, to be passed to the other \verb{smt_*()} functions.

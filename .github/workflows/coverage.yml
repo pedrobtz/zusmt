@@ -1,0 +1,35 @@
+# Test coverage, in two parts.
+#
+# covr measures the R code, which here is a thin layer over the boundary, so
+# that number alone would flatter the package. `native: true` adds a gcov
+# table for the compiled code, and that is the one worth reading: it says how
+# much of the C++ the tests actually reach.
+#
+# The vendored solver is deliberately not excluded from the native table. A
+# low figure there is information -- a bundled library carries modules this
+# package never calls -- and hiding it would answer the question by not
+# asking it.
+on:
+  push:
+    branches: [main, master]
+    # Prevents a push loop: the badge job commits back to the repository.
+    paths-ignore:
+      - ".github/badges/coverage.svg"
+  pull_request:
+
+name: coverage
+
+jobs:
+  coverage:
+    uses: pedrobtz/r-actions/.github/workflows/coverage.yml@v1
+    permissions:
+      contents: write
+    with:
+      native: true
+      # The default exercise loop runs `Rscript tests/*.R` from the repository
+      # root, but test_check() calls test_dir("testthat") -- a relative path --
+      # so it finds nothing there and reports "No test files found".
+      # R CMD check runs test files with the working directory set to tests/,
+      # which is why every other leg is fine. Setting the working directory
+      # here matches that; the underlying loop in r-actions wants the same fix.
+      native-run: cd tests && Rscript testthat.R

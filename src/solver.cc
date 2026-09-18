@@ -121,13 +121,21 @@ SolverHandle * handle_from(SEXP xp) {
     return handle;
 }
 
+// The single place the supported set is written down.
+//
 // Deliberately a short list rather than everything upstream accepts: these
-// are the logics the package tests. Widening it is a decision with test
-// obligations attached, not a typo fix.
+// are the logics the package tests, and widening it is a decision with test
+// obligations attached rather than a typo fix. R's smt_logics() reads this
+// array through C_supported_logics(), and the documentation, the corpus
+// header check and the per-logic tests all derive from that -- so there is no
+// second copy for someone to keep in agreement by hand.
+char const * const kSupportedLogics[] = {
+    "QF_UF", "QF_LIA", "QF_LRA", "QF_UFLIA", "QF_UFLRA", "QF_IDL", "QF_RDL", "QF_AX"
+};
+
 void check_logic_supported(std::string const & name) {
-    if (name == "QF_UF" || name == "QF_LRA" || name == "QF_LIA" || name == "QF_UFLRA" ||
-        name == "QF_UFLIA" || name == "QF_IDL" || name == "QF_RDL" || name == "QF_AX") {
-        return;
+    for (char const * supported : kSupportedLogics) {
+        if (name == supported) return;
     }
     throw std::invalid_argument("unsupported logic: " + name);
 }
@@ -224,6 +232,19 @@ extern "C" SEXP C_solver_release(SEXP xp) {
         (void) handle_from(xp);  // validates tag and liveness
         finalize_solver(xp);
         return R_NilValue;
+    });
+}
+
+// The supported logics, so R never has to restate them.
+extern "C" SEXP C_supported_logics(void) {
+    return zusmt::with_firewall([]() -> SEXP {
+        R_xlen_t const n = static_cast<R_xlen_t>(sizeof kSupportedLogics / sizeof kSupportedLogics[0]);
+        SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
+        for (R_xlen_t i = 0; i < n; ++i) {
+            SET_STRING_ELT(out, i, Rf_mkChar(kSupportedLogics[i]));
+        }
+        UNPROTECT(1);
+        return out;
     });
 }
 

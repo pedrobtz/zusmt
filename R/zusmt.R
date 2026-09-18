@@ -4,9 +4,9 @@
 #' with [smt_assert()]. The solver holds state: assertions accumulate until the
 #' handle is released or garbage collected.
 #'
-#' @param logic An SMT-LIB logic name. One of `"QF_UF"` (uninterpreted
-#'   functions), `"QF_LIA"` / `"QF_LRA"` (linear integer / real arithmetic),
-#'   `"QF_UFLIA"`, `"QF_UFLRA"`, `"QF_IDL"`, `"QF_RDL"` or `"QF_AX"` (arrays).
+#' @param logic An SMT-LIB logic name; [smt_logics()] returns the ones this
+#'   package supports. They cover uninterpreted functions, linear integer and
+#'   real arithmetic, their combinations, difference logic and arrays.
 #' @return A solver handle, to be passed to the other `smt_*()` functions.
 #' @seealso [smt_assert()], [smt_check()], [smt_model()]
 #' @export
@@ -22,6 +22,21 @@ smt_solver <- function(logic = "QF_UF") {
     list(ptr = .Call(C_solver_new, logic), logic = logic),
     class = "zusmt_solver"
   )
+}
+
+#' The logics this package supports
+#'
+#' The supported set is defined once, in the C++ layer, and read from there —
+#' so this function, the solver's own check and the package's tests cannot
+#' disagree about it.
+#'
+#' @return A character vector of SMT-LIB logic names accepted by
+#'   [smt_solver()].
+#' @export
+#' @examples
+#' smt_logics()
+smt_logics <- function() {
+  .Call(C_supported_logics)
 }
 
 #' Send SMT-LIB input to a solver
