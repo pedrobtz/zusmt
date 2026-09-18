@@ -120,7 +120,9 @@ extern "C" SEXP C_solver_check(SEXP xp) {
         char const * result = "error";
         if (zusmt::interrupt_was_requested()) {
             // The search stopped early because a poll saw a pending
-            // interrupt. Say so, and let the caller below raise it.
+            // interrupt. Report it; solver_check() in R is what raises it,
+            // because the poll that detected it also consumed R's pending
+            // flag, leaving nothing for this side to raise.
             result = "interrupted";
         } else if (status == opensmt::s_True) {
             result = "sat";
