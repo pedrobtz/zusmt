@@ -351,6 +351,11 @@ Exit: **met** — check clean with no notes, tarball 496K with the vignette.
 
 ## Stage 9 — CRAN submission
 
+- **Re-enable the `nosuggests` leg** (`.github/workflows/R-CMD-check.yaml`). Off since Stage 8, and
+  it is the leg rather than the package: CRAN builds the tarball once with Suggests present and runs
+  the noSuggests check against it, so the vignettes are already built, whereas the r-actions job
+  builds inside the container and dies on `vignette builder 'knitr' not found`. Waiting on
+  `--no-build-vignettes` in that job's `build_args`, which is currently hardcoded.
 - Run the `cran-extrachecks` skill.
 - **Installed size is ~45 MB**, almost all `libs/`. That is an INFO in the r-hub container and a NOTE
   on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the
