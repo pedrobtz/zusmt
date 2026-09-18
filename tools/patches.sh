@@ -225,11 +225,23 @@ echo "    shim include added to ${n} files"
 
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
-# nothing here patches. Cheap to assert, and it needs no linker: the
-# function-local form the fix uses never starts a line with `static
-# thread_local`, so this matches the broken shape only.
+# nothing here patches. Cheap to assert, and it needs no linker.
+#
+# `static` is optional in the pattern on purpose: at namespace scope
+# thread_local already implies static storage duration, so `thread_local T x;`
+# and C++17's `inline thread_local T x;` emit the same non-COMDAT TLS wrapper
+# on mingw without the keyword ever appearing.
+#
+# What separates the broken shape from the fix is `^[[:space:]]*` -- the
+# function-local form sits mid-line, inside the accessor. That is a formatting
+# property rather than a language one, but it is one this script controls: the
+# rule above writes that accessor as a single line. Reformat it across three
+# lines and this guard will fire on correct code.
+#
+# It is an approximation, and check-mingw.sh --link is the real check: that one
+# tests the actual failure rather than a proxy for it. This exists to be fast.
 echo "==> checking for class-scope thread_local (does not link on mingw)"
-if grep -rnE '^[[:space:]]*(inline[[:space:]]+)?static[[:space:]]+thread_local' \
+if grep -rnE '^[[:space:]]*(inline[[:space:]]+)?(static[[:space:]]+)?thread_local' \
      "${vendor}" --include='*.cc' --include='*.h'; then
   echo "ERROR: the lines above declare a thread_local at class or namespace scope." >&2
   echo "On mingw each translation unit emits its own TLS init wrapper and the" >&2
