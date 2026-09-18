@@ -1,15 +1,20 @@
 Package: zusmt
 Title: Bindings to the 'OpenSMT' Satisfiability Modulo Theories Solver
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
-    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre")),
+    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
     person("OpenSMT authors", role = c("ctb", "cph"),
            comment = "bundled OpenSMT sources; see LICENSE.note")
   )
-Description: Bundles the 'OpenSMT' satisfiability modulo theories (SMT) solver
-    <https://github.com/usi-verification-and-security/opensmt> and exposes it
-    to R, so that solving does not require a separately installed solver
-    binary.
+Description: Solve satisfiability modulo theories (SMT) problems using the
+    bundled 'OpenSMT' solver, described in Hyvaerinen, Marescotti, Alt and
+    Sharygina (2016) <doi:10.1007/978-3-319-40970-2_35>. Problems are written
+    in the 'SMT-LIB' standard language and answers come back as R values,
+    with model values carrying the solver's exact rational alongside the
+    double. Supported theories include uninterpreted functions, linear integer
+    and real arithmetic and their combinations, difference logic, and arrays.
+    The solver is compiled into the package, so no separately installed solver
+    binary is required.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

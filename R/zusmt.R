@@ -131,7 +131,15 @@ smt_release <- function(solver) {
   invisible(NULL)
 }
 
+#' Print a solver
+#'
+#' @param x A solver from [smt_solver()].
+#' @param ... Ignored, for compatibility with [print()].
+#' @return `x`, invisibly. Called for the side effect of printing the solver's
+#'   logic and whether it has been released.
 #' @export
+#' @examples
+#' print(smt_solver("QF_LIA"))
 print.zusmt_solver <- function(x, ...) {
   released <- tryCatch({
     solver_check(x$ptr)
