@@ -1,0 +1,40 @@
+#!/bin/sh
+# Check that src/opensmt/ still matches the recorded checksums.
+#
+# This catches a hand-edited vendored file in a working tree. It cannot catch
+# an edit whose checksum was re-recorded to match -- reproducibility is a
+# property of the commit, not the tree -- which is what the PR half of the
+# vendor.yml workflow is for.
+set -eu
+
+here=$(cd "$(dirname "$0")/../.." && pwd)
+cd "${here}"
+
+[ -f tools/vendor/checksums.sha256 ] || {
+  echo "ERROR: tools/vendor/checksums.sha256 is missing" >&2
+  exit 1
+}
+
+# Files present now but absent from the manifest are as much a problem as
+# altered ones, so compare both directions.
+recorded=$(mktemp)
+present=$(mktemp)
+trap 'rm -f "${recorded}" "${present}"' EXIT
+
+awk '{ sub(/^\*/, "", $2); print $2 }' tools/vendor/checksums.sha256 | LC_ALL=C sort > "${recorded}"
+find src/opensmt -type f | LC_ALL=C sort > "${present}"
+
+if ! diff -u "${recorded}" "${present}" > /dev/null; then
+  echo "ERROR: the vendored file list does not match tools/vendor/checksums.sha256" >&2
+  diff -u "${recorded}" "${present}" >&2 || true
+  exit 1
+fi
+
+if ! shasum -a 256 -c tools/vendor/checksums.sha256 > /dev/null 2>&1; then
+  echo "ERROR: vendored files differ from their recorded checksums:" >&2
+  shasum -a 256 -c tools/vendor/checksums.sha256 2>/dev/null | grep -v ': OK$' >&2 || true
+  echo "Re-run tools/vendor.sh rather than editing src/opensmt/ by hand." >&2
+  exit 1
+fi
+
+echo "verify: src/opensmt matches the manifest ($(wc -l < "${recorded}" | tr -d ' ') files)"

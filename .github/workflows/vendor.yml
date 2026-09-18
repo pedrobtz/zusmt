@@ -1,0 +1,21 @@
+# Guards the bundled OpenSMT sources under src/opensmt/.
+#
+# Two different failures: tools/vendor/verify catches a hand-edited file in
+# the working tree, and the workflow's PR half catches a file changed without
+# the manifest and checksums changing with it -- which verify cannot see,
+# because a re-recorded checksum matches the edit happily and is still not
+# reproducible from tools/vendor.sh.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: vendor
+
+permissions: read-all
+
+jobs:
+  vendor:
+    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@v1
+    with:
+      vendor-dir: src/opensmt
