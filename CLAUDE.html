@@ -41,11 +41,19 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Stage 1 of <a href="roadmap.html">roadmap.md</a>: no OpenSMT sources are vendored yet. What exists is the build glue and a probe — <code>configure</code>/<code>configure.win</code> (sharing <code>tools/gmp.sh</code>) locate GMP and generate <code>src/Makevars</code> from <code>src/Makevars.in</code>, and <code><a href="reference/smt_toolchain.html">smt_toolchain()</a></code> in <a href="src/toolchain.cc">src/toolchain.cc</a> reports the compiler, <code>__cplusplus</code>, GMP version and a threaded rational round trip. That file is a probe, not a feature: it goes away when the vendored solver replaces it. Read <code>roadmap.md</code> before starting work — it says which stage the next piece of work belongs to.</p>
+<p>Stage 2 of <a href="roadmap.html">roadmap.md</a> is done: OpenSMT v2.9.2 is bundled under <code>src/opensmt/</code> (238 files), but <strong>nothing compiles it yet</strong> — <code>src/Makevars.in</code> still builds only <code>init.cc</code> and <code>toolchain.cc</code>, because R compiles <code>src/</code> top level and not subdirectories unless <code>OBJECTS</code> says so. Wiring that up is Stage 3. <code><a href="reference/smt_toolchain.html">smt_toolchain()</a></code> in <a href="src/toolchain.cc">src/toolchain.cc</a> is a Stage 1 probe, not a feature, and goes away once the solver replaces it. Read <code>roadmap.md</code> before starting work — it says which stage the next piece belongs to.</p>
+</div>
+<div class="section level2">
+<h2 id="vendored-sources">Vendored sources<a class="anchor" aria-label="anchor" href="#vendored-sources"></a></h2>
+<p><code>src/opensmt/</code> is generated. Never edit it by hand: <code>tools/vendor/verify</code> and the <code>vendor</code> workflow both exist to catch exactly that, and a hand edit is lost at the next bump.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># bump: edit OPENSMT_VERSION in tools/vendor.sh, then</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="va">BISON</span><span class="op">=</span>/usr/local/opt/bison/bin/bison <span class="ex">./tools/vendor.sh</span>   <span class="co"># macOS system bison is 2.3; upstream needs &gt;= 3.0</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="ex">./tools/vendor/verify</span></span></code></pre></div>
+<p>Re-running on a clean checkout must leave <code>git status</code> clean — that is the reproducibility property the guard depends on. A PR that changes a file under <code>src/opensmt/</code> without changing <code>tools/vendor/manifest.tsv</code> and <code>tools/vendor/checksums.sha256</code> fails the <code>vendor</code> workflow.</p>
 </div>
 <div class="section level2">
 <h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">load_all</span><span class="op">(</span><span class="op">)</span>                    <span class="co"># compile src/ + load; the main dev loop</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span>                    <span class="co"># regenerate NAMESPACE + man/ from roxygen</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>                        <span class="co"># run all tests</span></span>

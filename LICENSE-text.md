@@ -1,4 +1,4 @@
 # License
 
     YEAR: 2026
-    COPYRIGHT HOLDER: zusmt authors
+    COPYRIGHT HOLDER: Pedro Botz

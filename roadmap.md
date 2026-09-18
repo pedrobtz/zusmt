@@ -137,7 +137,7 @@ Workflows to adopt at their stage, not before:
 Exit: green on macOS, Windows, ubuntu release/oldrel-1 and the three
 r-devel containers.
 
-## Stage 2 — Import the sources
+## Stage 2 — Import the sources — **done** (PR \#2)
 
 - Write `tools/vendor.sh` (checked in, idempotent): clone at the pinned
   tag → copy `src/` → delete `parallel/`, `bin/` → run `bison`/`flex` on
@@ -156,8 +156,21 @@ first fails a PR that edits a vendored file without updating the
 manifest and checksums, the second opens an issue when upstream ships a
 release past our pin.
 
-Exit: `tools/vendor.sh` reproduces `src/opensmt/` from a clean checkout;
-`git status` clean after a re-run.
+What landed: **OpenSMT v2.9.2** (`34bc1b8`, 2025-06-16), 238 files under
+`src/opensmt/`. v2.9.2 rather than `master` because
+`vendor-upstream.yml` compares the pin against upstream’s latest
+*release*, so pinning a moving branch makes that check meaningless; its
+`CMakeLists.txt` asks for the same C++20, GMP and Threads that Stage 1
+proved, so that result carries over.
+
+Removed at import: `parallel/` (sockets and signals), `bin/` (the CLI
+executable), and every `CMakeLists.txt` — a build description in-tree
+for a build this package does not use is a trap, not documentation. The
+SMT-LIB parser is generated here with bison 3.8.2 and flex 2.6.4 and
+committed, because neither tool can be an install-time dependency.
+
+Exit: **met** — `tools/vendor.sh` run twice produces byte-identical
+checksums, and `tools/vendor/verify` passes against the manifest.
 
 ## Stage 3 — Build it with R’s toolchain
 

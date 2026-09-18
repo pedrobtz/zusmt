@@ -160,12 +160,14 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="stage-2--import-the-sources">Stage 2 — Import the sources<a class="anchor" aria-label="anchor" href="#stage-2--import-the-sources"></a></h2>
+<h2 id="stage-2--import-the-sources--done-pr-2">Stage 2 — Import the sources — <strong>done</strong> (PR #2)<a class="anchor" aria-label="anchor" href="#stage-2--import-the-sources--done-pr-2"></a></h2>
 <ul><li>Write <code>tools/vendor.sh</code> (checked in, idempotent): clone at the pinned tag → copy <code>src/</code> → delete <code>parallel/</code>, <code>bin/</code> → run <code>bison</code>/<code>flex</code> on <code>smt2newparser.yy</code> / <code>smt2newlexer.ll</code> and place the generated <code>.cc</code>/<code>.hh</code> next to them → write <code>src/opensmt/VERSION</code> with tag + commit SHA + date. flex/bison run on the <em>maintainer’s</em> machine only; the generated files are committed so that neither is needed at install time.</li>
 <li>Copy upstream <code>LICENSE</code> and <code>src/minisat/LICENSE</code> into <code>LICENSE.note</code>; list OpenSMT copyright holders in <code>DESCRIPTION</code> as <code>cph</code>.</li>
 <li>Keep the vendored tree byte-identical to upstream apart from Stage 4’s patch series.</li>
 </ul><p>Adopt <code>vendor.yml</code> and <code>vendor-upstream.yml</code> in the same commit: the first fails a PR that edits a vendored file without updating the manifest and checksums, the second opens an issue when upstream ships a release past our pin.</p>
-<p>Exit: <code>tools/vendor.sh</code> reproduces <code>src/opensmt/</code> from a clean checkout; <code>git status</code> clean after a re-run.</p>
+<p>What landed: <strong>OpenSMT v2.9.2</strong> (<code>34bc1b8</code>, 2025-06-16), 238 files under <code>src/opensmt/</code>. v2.9.2 rather than <code>master</code> because <code>vendor-upstream.yml</code> compares the pin against upstream’s latest <em>release</em>, so pinning a moving branch makes that check meaningless; its <code>CMakeLists.txt</code> asks for the same C++20, GMP and Threads that Stage 1 proved, so that result carries over.</p>
+<p>Removed at import: <code>parallel/</code> (sockets and signals), <code>bin/</code> (the CLI executable), and every <code>CMakeLists.txt</code> — a build description in-tree for a build this package does not use is a trap, not documentation. The SMT-LIB parser is generated here with bison 3.8.2 and flex 2.6.4 and committed, because neither tool can be an install-time dependency.</p>
+<p>Exit: <strong>met</strong> — <code>tools/vendor.sh</code> run twice produces byte-identical checksums, and <code>tools/vendor/verify</code> passes against the manifest.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-3--build-it-with-rs-toolchain">Stage 3 — Build it with R’s toolchain<a class="anchor" aria-label="anchor" href="#stage-3--build-it-with-rs-toolchain"></a></h2>
