@@ -97,9 +97,9 @@ int osmt_yylex(YYSTYPE* lvalp, YYLTYPE* llocp, void* scanner);
 void osmt_yyerror( YYLTYPE* locp, Smt2newContext* context, const char * s )
 {
   if (context->interactive)
-    Rprintf("At interactive input: %s\n", s);
+    zusmt::rerr() << "At interactive input: " << s << "\n";
   else
-    Rprintf( "At line %d: %s\n", locp->first_line, s );
+    zusmt::rerr() << "At line " << locp->first_line << ": " << s << "\n";
 //  exit( 1 );
 }
 

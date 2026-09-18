@@ -106,7 +106,8 @@ Workflows to adopt at their stage, not before:
 | --- | --- | --- |
 | `vendor.yml` | 2 | Needs `src/opensmt/` and a checksum manifest to guard |
 | `vendor-upstream.yml` | 2 | Needs a pinned version for it to compare against |
-| `sanitizers`, `valgrind`, `gctorture`, `rchk`, `lto` (`native-checks.yml`) | 5–7 | Want a real R/C++ boundary and a test suite to exercise it |
+| `sanitizers`, `valgrind`, `gctorture`, `rchk`, `lto` (`native-checks.yml`) | **adopted in Stage 6** | Review pointed out the inversion: this is the only sibling package with a hand-written boundary, external pointers, manual `PROTECT`/`UNPROTECT` and a finalizer, and was the only one with none of these |
+| `nosuggests` and `nold` inputs to `r-cmd-check.yml` | 7 | `nosuggests` has something to catch once there are examples: the one `Suggests` is testthat, and `tests/testthat.R` calls `library(testthat)` at top level |
 | `coverage.yml` (`native: true`) | 7 | The gcov table answers "how much of the vendored solver do our tests reach?" |
 
 Exit: green on macOS, Windows, ubuntu release/oldrel-1 and the three r-devel containers.
@@ -258,19 +259,52 @@ Exit: **met** — 26 tests, covering `gc()` survival, collection of unreferenced
 release being idempotent rather than a double free, foreign external pointers rejected by tag, and a
 C++ exception arriving as an ordinary R condition with the session still usable.
 
-## Stage 6 — R-facing API
+## Stage 6 — R-facing API — **done** (PR #5)
 
-Per the Stage 0 decision. A plausible minimum: `smt_solver()`, `smt_assert()`, `smt_check()`,
-`smt_model()`, plus `print`/`format` methods. Decide error vs. value semantics for `unknown`, and how
-rationals come back to R (double, character, or `gmp::bigq`).
+**Decision: SMT-LIB2 text in, R values out.** The objection to it — that `Interpret` *prints* its
+answers — turned out not to bind, because `Interpret::getMainSolver()` is public, so results are read
+from the solver rather than scraped from printed output. `Interpret` keeps `logic` and
+`user_declarations` protected, reached by subclassing it in our own code rather than patching the
+vendored header, so nothing here needs re-applying at the next bump.
 
-Exit: the README example is real code that runs.
+`smt_assert()` accepts any SMT-LIB2 commands, not only assertions — `push`/`pop`, declarations and
+options all work — because a front end to the solver's own language is more useful than a curated
+subset of it.
+
+**Rationals keep their exact form.** A model value comes back as a double carrying an `"exact"`
+attribute with the solver's own rational, since `1/3` is not representable as a double and silently
+rounding a solver's answer is the wrong default.
+
+**Diagnostics became conditions, which took two fixes.** Semantic errors reach the console through
+`notify_formatted`, so `zusmt::begin_capture()` collects that output and turns it into an R error.
+Parse errors went through `Rprintf`, which the capture cannot see, so they leaked to the console
+*and* produced a contentless R error — a patch rule now routes them through `zusmt::rerr()`.
+
+**A memory-safety bug found in review, and what it took to see it.** The model reader collected
+values in a `std::vector<SEXP>`, which R's collector cannot see, leaving every element unprotected
+from the moment it was stored until the list was built. The fix allocates the list first and stores
+each value straight into it.
+
+Worth recording how it behaved, because it shaped the test: under `gctorture2(1)` with three
+declarations it produced *correct results* — the freed nodes had not been reused yet. With sixty, the
+list came back holding a `CHARSXP` ("cannot have attributes on a CHARSXP"), which is collected memory
+handed back as a value. A latent use-after-free that a small test cannot see is exactly the argument
+for `rchk`, which names it statically rather than waiting for the allocation pattern that exposes it.
+
+Exit: **met** — 29 API tests, including `push`/`pop`, exact rationals, arity > 0 omitted from models,
+both error paths, and the 60-declaration regression under `gctorture`.
 
 ## Stage 7 — Tests and memory hygiene
 
 - `testthat` unit tests per logic (QF_UF, QF_LRA, QF_LIA, QF_AX), plus error paths and interrupts.
 - Regression corpus of small SMT-LIB files under `inst/` (keep the package tarball small).
-- ASAN/UBSAN and valgrind runs via `rhub::rhub_check()`; add a `--use-valgrind` note to CLAUDE.md.
+- **Re-enable the `sanitizers` leg** in `.github/workflows/native-checks.yml`. It is parked, not
+  dropped: `r-actions`' `sanitizers.yml` sets `CC`/`CXX` to clang but not `CXX20`, so a C++20 package
+  compiles with R's configured g++ while carrying clang-only link flags, and every compile probe
+  fails. Waiting on `CXX17`/`CXX20` (and their `*STD` variants) being set there. UBSan covers ground
+  valgrind does not — signed overflow, misaligned pointers, invalid casts — and this package has
+  already shipped one memory bug to review, so it is worth having back.
+- `valgrind`, `gctorture`, `rchk` and `lto` already run via `native-checks.yml` (adopted in Stage 6).
 - Guard check time: keep examples and tests fast; CRAN's limit is the practical constraint.
 
 Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just the happy path.
@@ -286,6 +320,9 @@ Exit: clean sanitizer runs; tests meaningfully exercise the boundary, not just t
 ## Stage 9 — CRAN submission
 
 - Run the `cran-extrachecks` skill.
+- **Installed size is ~45 MB**, almost all `libs/`. That is an INFO in the r-hub container and a NOTE
+  on CRAN, where anything over 5 MB draws a comment. Defensible for a bundled SMT solver, but the
+  explanation belongs in `cran-comments.md` before a reviewer asks, not after.
 - Verify: `SystemRequirements` accurate, `LICENSE.note` present, copyright holders credited,
   install time and tarball size acceptable, no compiler warnings on CRAN's flavours, `--as-cran`
   clean including the "libs size" note.
