@@ -71,3 +71,8 @@ missing from the runner. The `configure-scripts` job runs `checkbashisms --posix
 `shellcheck -s sh configure configure.win cleanup tools/gmp.sh` locally before pushing.
 
 `roadmap.md` records which r-actions workflows to adopt at which stage; do not add them early.
+
+Reading a CI build log: `rcmdcheck` prints the install log only on failure. The container legs
+upload a `check-<name>` artifact holding `zusmt.Rcheck/00install.out` (which contains `configure`'s
+output and every compiler line); the runner legs upload only on failure. So:
+`gh run download <run-id> -n check-clang23`.

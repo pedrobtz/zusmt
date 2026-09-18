@@ -36,7 +36,7 @@ Do this before writing any build glue; the answers change every later stage.
 
 Exit: `DESCRIPTION` is real, the API decision is written into [CLAUDE.md](CLAUDE.md).
 
-## Stage 1 — Toolchain feasibility spike (no OpenSMT yet) — **in progress**
+## Stage 1 — Toolchain feasibility spike (no OpenSMT yet) — **done** (PR #1)
 
 The single highest-risk stage. Prove C++20 + GMP + pthreads builds under `R CMD INSTALL` on every
 CI configuration *before* importing 90 source files. Built:
@@ -66,7 +66,26 @@ CI configuration *before* importing 90 source files. Built:
 3. **The r-devel containers pass**: clang 23 and GCC 16 both build C++20 with GMP, as do ubuntu
    release and oldrel-1.
 
-Exit: green on all seven legs. Currently six of seven, with the macOS fix pushed and re-running.
+How GMP was actually found, per platform:
+
+| Leg | Compiler | GMP discovered via |
+| --- | --- | --- |
+| windows-latest | Rtools GCC | compiler's default search path — Rtools ships `libgmpxx` and `libgmp` |
+| macos-latest | Apple clang | Homebrew prefix, included with `-isystem` |
+| ubuntu release / oldrel-1 | GCC | `libgmp-dev`, installed by pak from `SystemRequirements` |
+| clang23 | `clang++-23 -stdlib=libc++` | pkg-config gmpxx 6.3.0 |
+| ubuntu-clang / ubuntu-gcc16 | clang 22 / GCC 16 | system paths |
+
+Note that `sysreqs` resolution worked from `SystemRequirements: GMP (>= 5.0.0), C++20` alone — pak
+installed `libgmp-dev` on the Linux legs with no workflow change.
+
+**Reading the build log in CI**: `rcmdcheck` prints the install log only on failure, so
+`configure`'s output is invisible on a green run. The container legs upload a `check-*` artifact
+containing `zusmt.Rcheck/00install.out`, which has it; the runner legs upload only when they fail.
+For Stage 3, where compiler output is the thing being debugged, that is where to look:
+`gh run download <id> -n check-clang23`.
+
+Exit: **met** — green on all seven legs.
 
 ### CI (adopted: [pedrobtz/r-actions](https://github.com/pedrobtz/r-actions))
 
