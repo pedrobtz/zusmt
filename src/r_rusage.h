@@ -17,6 +17,12 @@
 #define RUSAGE_SELF 0
 #endif
 
+// mingw declares struct timeval (with a long tv_usec) but not the POSIX
+// suseconds_t typedef that upstream's BTime uses for its microsecond field.
+// Repeating an identical typedef is legal in C++, so this stays safe if a
+// future mingw does declare it as long.
+typedef long suseconds_t;
+
 struct rusage {
     struct timeval ru_utime;
     struct timeval ru_stime;
