@@ -1,50 +1,44 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+# R CMD check, via the reusable workflows in pedrobtz/r-actions.
+#
+# The file name stays R-CMD-check.yaml because the README badge points at it;
+# the workflow's own `name:` is what the GitHub UI shows.
 on:
   push:
     branches: [main, master]
   pull_request:
 
-name: R-CMD-check.yaml
+name: R-CMD-check
 
 permissions: read-all
 
 jobs:
   R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
+    uses: pedrobtz/r-actions/.github/workflows/r-cmd-check.yml@v1
+    with:
+      # --as-cran turns on the bashisms test, which reports a WARNING when the
+      # `checkbashisms` script is merely absent -- true of the macOS and
+      # Windows runners, where no configure script is even run. With
+      # error_on = "warning" that is a red leg saying nothing about this
+      # package. The `configure-scripts` job below runs checkbashisms itself,
+      # on a machine that has it, so nothing is lost by turning it off here.
+      env: |
+        _R_CHECK_BASHISMS_=false
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {os: macos-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel-1'}
-
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
-
+  # What the disabled check above would have done, done properly: the real
+  # checkbashisms, plus shellcheck in POSIX mode, against every shell script
+  # that ships in the tarball.
+  configure-scripts:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - name: Install checkbashisms and shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends devscripts shellcheck
 
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
+      - name: checkbashisms
+        run: checkbashisms --posix configure configure.win cleanup tools/gmp.sh
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck
-          needs: check
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+      - name: shellcheck
+        run: shellcheck -s sh configure configure.win cleanup tools/gmp.sh

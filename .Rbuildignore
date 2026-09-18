@@ -3,3 +3,8 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^roadmap\.md$
+^CLAUDE\.md$
+^src/Makevars$
+^src/Makevars\.win$
+^conftest
