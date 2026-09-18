@@ -1,5 +1,5 @@
 Package: zusmt
-Title: Bindings to the 'OpenSMT' Satisfiability Modulo Theories Solver
+Title: Satisfiability Modulo Theories Solving with 'OpenSMT'
 Version: 0.1.0
 Authors@R: c(
     person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
