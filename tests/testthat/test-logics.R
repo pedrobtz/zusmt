@@ -43,16 +43,16 @@ test_that("every advertised logic decides both a sat and an unsat problem", {
   }
 })
 
-test_that("the tested logics are exactly the ones the package advertises", {
-  # If a logic is added to check_logic_supported() and ?smt_solver without a
-  # probe here, this fails -- the list and the evidence for it stay together.
-  documented <- c("QF_UF", "QF_LIA", "QF_LRA", "QF_UFLIA", "QF_UFLRA",
-                  "QF_IDL", "QF_RDL", "QF_AX")
-  expect_setequal(names(logic_probes), documented)
+test_that("every logic the package supports has a probe here", {
+  # smt_logics() reads the C++ array that check_logic_supported() gates on, so
+  # this compares the probes against the package's own answer rather than
+  # against a second copy of the list in this file. Add a logic to that array
+  # and this fails until it has a sat and an unsat probe.
+  expect_setequal(names(logic_probes), smt_logics())
 
-  # And each one is genuinely accepted, which is a weaker claim than above but
-  # catches a typo in the list itself.
-  for (logic in documented) {
+  # And each is genuinely accepted -- a weaker claim, but it catches a typo in
+  # the array that the probes would otherwise mask.
+  for (logic in smt_logics()) {
     expect_s3_class(smt_solver(logic), "zusmt_solver")
   }
 })

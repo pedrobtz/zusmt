@@ -26,3 +26,10 @@ jobs:
       contents: write
     with:
       native: true
+      # The default exercise loop runs `Rscript tests/*.R` from the repository
+      # root, but test_check() calls test_dir("testthat") -- a relative path --
+      # so it finds nothing there and reports "No test files found".
+      # R CMD check runs test files with the working directory set to tests/,
+      # which is why every other leg is fine. Setting the working directory
+      # here matches that; the underlying loop in r-actions wants the same fix.
+      native-run: cd tests && Rscript testthat.R

@@ -8,6 +8,7 @@ extern "C" SEXP C_toolchain_report(void);
 extern "C" SEXP C_solver_new(SEXP logic_name);
 extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated);
 extern "C" SEXP C_solver_check(SEXP xp);
+extern "C" SEXP C_supported_logics(void);
 extern "C" SEXP C_solver_run(SEXP xp, SEXP text);
 extern "C" SEXP C_solver_model(SEXP xp);
 extern "C" SEXP C_solver_release(SEXP xp);
@@ -22,6 +23,7 @@ static R_CallMethodDef const CallEntries[] = {
     {"C_solver_new", (DL_FUNC) &C_solver_new, 1},
     {"C_solver_assert_var", (DL_FUNC) &C_solver_assert_var, 3},
     {"C_solver_check", (DL_FUNC) &C_solver_check, 1},
+    {"C_supported_logics", (DL_FUNC) &C_supported_logics, 0},
     {"C_solver_run", (DL_FUNC) &C_solver_run, 2},
     {"C_solver_model", (DL_FUNC) &C_solver_model, 1},
     {"C_solver_release", (DL_FUNC) &C_solver_release, 1},

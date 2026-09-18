@@ -5,7 +5,12 @@
 
 corpus_files <- function() {
   dir <- system.file("smt2", package = "zusmt")
-  skip_if(dir == "", "corpus not installed")
+  # Not skip_if(): a corpus that stops being installed -- a stray
+  # .Rbuildignore line, a rename -- is exactly when these tests must fail
+  # rather than quietly pass having run nothing.
+  if (dir == "" || !dir.exists(dir)) {
+    stop("inst/smt2 is not installed; the corpus tests would test nothing")
+  }
   list.files(dir, pattern = "\\.smt2$", full.names = TRUE)
 }
 
@@ -23,10 +28,8 @@ test_that("the corpus is present and every file declares a logic and a result", 
   expect_gt(length(files), 0)
 
   for (f in files) {
-    expect_true(corpus_header(f, "logic") %in%
-                  c("QF_UF", "QF_LIA", "QF_LRA", "QF_UFLIA", "QF_UFLRA",
-                    "QF_IDL", "QF_RDL", "QF_AX"),
-                info = basename(f))
+    # smt_logics() again, rather than a third copy of the list.
+    expect_true(corpus_header(f, "logic") %in% smt_logics(), info = basename(f))
     expect_true(corpus_header(f, "expect") %in% c("sat", "unsat", "unknown"),
                 info = basename(f))
   }
@@ -48,7 +51,7 @@ test_that("a satisfiable corpus file yields a model that satisfies its bounds", 
   # Spot-check that "sat" is backed by real values rather than just a status:
   # lia-bounds.smt2 asserts 3 < x < 7 and y = 2x.
   f <- file.path(system.file("smt2", package = "zusmt"), "lia-bounds.smt2")
-  skip_if(!file.exists(f), "corpus not installed")
+  expect_true(file.exists(f))
 
   s <- smt_solver("QF_LIA")
   smt_assert(s, paste(readLines(f, warn = FALSE), collapse = "\n"))

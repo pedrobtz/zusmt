@@ -39,9 +39,10 @@ edit, and fails if either header is missing or malformed.
 ; expect: unsat
 ```
 
-A new *logic* is more than a list entry: `test-logics.R` asserts that the probes it exercises equal
-the logics `check_logic_supported()` and `?smt_solver` advertise, so adding one without a sat and an
-unsat probe fails the suite.
+The supported logics are defined **once**, in `kSupportedLogics[]` in [src/solver.cc](src/solver.cc).
+`smt_logics()` reads that array, and the documentation, the corpus header check and `test-logics.R`
+all derive from it — so adding a logic to the array without a sat and an unsat probe fails the suite.
+Do not restate the list anywhere; a second copy agreeing with a third is a tautology, not a check.
 
 ## Generated files that R CMD check will not catch
 

@@ -319,6 +319,12 @@ malformed header fails rather than being silently skipped. The cases are chosen 
 different machinery: congruence closure, an integer-only infeasibility (`2x = 3`, which is sat in
 QF_LRA), a difference-logic negative cycle, array store/select, and a UF/arithmetic combination.
 
+**One source of truth for the logics.** The first version of the list-agreement test compared two
+hand-written vectors *in the same file*, which could never fail: the list existed in five places
+(the C++ chain, the Rd, the probes, the test's copy, the corpus header check). It is now one array
+in `src/solver.cc`, read by `smt_logics()`, with everything else derived. Verified by adding a ninth
+logic to the array and watching the suite go red.
+
 **Check flavours**: `nosuggests` and `nold` are on. The first needed a fix to `tests/testthat.R` —
 testthat is the only `Suggests`, and the standard scaffold calls `library(testthat)` at top level,
 which errors on precisely that flavour.
