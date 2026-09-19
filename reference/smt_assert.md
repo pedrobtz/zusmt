@@ -25,7 +25,9 @@ smt_assert(solver, text)
 
 ## Value
 
-The solver, invisibly, so calls can be chained.
+The solver, invisibly, so calls can be chained. Anything the script
+prints — the output of `get-model`, `get-value`, `get-info` or `echo`,
+for instance — is written to the console.
 
 ## Details
 
