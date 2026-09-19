@@ -238,9 +238,14 @@ echo "    interruptibility:"
 #    across C++ frames, which would skip those destructors and leak the
 #    solver's heap. check() then returns s_Undef, and the boundary raises the
 #    interrupt in R once no C++ frame is left.
+#
+#    should_stop() asks about a solve deadline too. Upstream has no timeout --
+#    :timeout is not one of its options, so (set-option :timeout n) is
+#    accepted and ignored -- and one belongs at the same point for the same
+#    reason: it must end the search by unwinding, not by stopping it.
 patch_exact smtsolvers/CoreSMTSolver.cc \
-  's|^    return not opensmt::stop;|    return not opensmt::stop and not zusmt::interrupt_requested();|' \
-  'okContinue(): also stop when R has a pending interrupt'
+  's|^    return not opensmt::stop;|    return not opensmt::stop and not zusmt::should_stop();|' \
+  'okContinue(): also stop on a pending interrupt or an expired deadline'
 
 
 # 10. Functions that are POSIX or GNU rather than standard, and one signature
@@ -266,7 +271,7 @@ rule 'asprintf -> zusmt::alloc_printf' '(^|[^_:[:alnum:]])asprintf[[:space:]]*\(
 #    -include compiler flag and shows up in the diff.
 echo "==> adding the shim include where it is needed"
 n=0
-for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_printf|interrupt_requested)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
+for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_printf|interrupt_requested|should_stop)|Rprintf|REprintf' "${vendor}" --include='*.cc' --include='*.h' 2>/dev/null || true); do
   grep -q '#include <r_compat.h>' "${f}" && continue
   printf '#include <r_compat.h>\n' > "${f}.patched"
   cat "${f}" >> "${f}.patched"

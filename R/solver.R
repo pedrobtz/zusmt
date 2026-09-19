@@ -11,8 +11,25 @@ solver_assert_var <- function(solver, name, negated = FALSE) {
   invisible(.Call(C_solver_assert_var, solver, name, negated))
 }
 
-solver_check <- function(solver) {
-  result <- .Call(C_solver_check, solver)
+solver_check <- function(solver, timeout = Inf) {
+  result <- .Call(C_solver_check, solver, as.double(timeout))
+
+  if (identical(result, "timeout")) {
+    # A timeout is an "unknown" -- the solver stopped without deciding, which
+    # is exactly what SMT-LIB means by it -- so that is what comes back, and
+    # code testing for "unknown" keeps working. But returning it silently
+    # would make a bounded solve indistinguishable from a solver that genuinely
+    # gave up, so it is also a warning: visible by default, catchable, and it
+    # does not change the value the way an attribute would.
+    warning(structure(
+      class = c("zusmt_timeout", "warning", "condition"),
+      list(
+        message = sprintf("solve timed out after %g seconds; result is \"unknown\"", timeout),
+        call = sys.call()
+      )
+    ))
+    return("unknown")
+  }
 
   if (identical(result, "interrupted")) {
     # The search stopped because a poll saw a pending interrupt -- and that

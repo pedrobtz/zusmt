@@ -131,7 +131,19 @@ smt_assert <- function(solver, text) {
 #' Check satisfiability
 #'
 #' @param solver A solver from [smt_solver()].
+#' @param timeout Seconds to allow the search, or `Inf` for no limit. On
+#'   expiry the result is `"unknown"` and a warning of class `zusmt_timeout`
+#'   is signalled.
+#'
+#'   The bound is honoured where the solver checks whether to keep searching,
+#'   which is its SAT loop, so a solve can overrun it while inside
+#'   preprocessing or a single long theory propagation. Treat it as a floor on
+#'   when the call returns rather than a hard guarantee.
 #' @return `"sat"`, `"unsat"` or `"unknown"`.
+#'
+#'   A timeout reports `"unknown"`, since a solve that ran out of time has not
+#'   decided anything -- the warning is what distinguishes it from a solver
+#'   that gave up on its own.
 #'
 #'   A long search can be interrupted. Because the poll that notices a pending
 #'   interrupt also consumes it, the interrupt is re-signalled from R as a
@@ -142,9 +154,15 @@ smt_assert <- function(solver, text) {
 #' s <- smt_solver("QF_LIA")
 #' smt_assert(s, "(declare-const x Int) (assert (> x 0)) (assert (< x 0))")
 #' smt_check(s)
-smt_check <- function(solver) {
+#'
+#' # A bounded solve on a problem that is hard rather than large.
+#' smt_check(s, timeout = 10)
+smt_check <- function(solver, timeout = Inf) {
   check_solver(solver)
-  solver_check(solver$ptr)
+  if (!is.numeric(timeout) || length(timeout) != 1L) {
+    stop("`timeout` must be a single number", call. = FALSE)
+  }
+  solver_check(solver$ptr, timeout)
 }
 
 #' The model of a satisfiable problem

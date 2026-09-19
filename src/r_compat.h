@@ -101,6 +101,33 @@ void arm_test_interrupt(int polls);
 bool interrupt_was_requested();
 void clear_interrupt_request();
 
+// A wall-clock bound on a single solve.
+//
+// OpenSMT has no timeout of its own -- :timeout is not one of its options, so
+// (set-option :timeout n) is accepted and ignored -- and without one a hard
+// problem hangs the R session until the user interrupts it. This reuses the
+// mechanism that already works: the deadline is checked in okContinue(),
+// alongside the interrupt poll, so an expired timeout ends the search by
+// unwinding through the solver's own destructors rather than by any kind of
+// asynchronous stop.
+//
+// Consequences worth knowing. The bound is checked only where okContinue() is
+// called, which is the SAT search loop -- time spent in preprocessing or in a
+// single long theory propagation is not interruptible, so the deadline is a
+// floor on when the solve ends rather than a guarantee. It is monotonic
+// (steady_clock), so changing the system clock mid-solve does not affect it.
+void set_deadline(double seconds);
+void clear_deadline();
+
+// True once the deadline has passed; latched, so every later call agrees.
+bool deadline_reached();
+
+// What okContinue() asks: either reason to stop searching. Checked in the
+// order that costs least -- the deadline is a clock read, the interrupt poll
+// builds and tears down an R context (throttled, but still the dearer of the
+// two).
+bool should_stop();
+
 // Replaces rand()/srand(). Self-contained xorshift rather than R's RNG: these
 // call sites are heuristic tie-breaks inside the solver, and reaching into
 // R's RNG stream from solver internals would both need GetRNGstate/PutRNGstate
