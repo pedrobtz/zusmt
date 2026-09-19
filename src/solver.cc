@@ -161,6 +161,30 @@ void check_logic_supported(std::string const & name) {
     throw std::invalid_argument("unsupported logic: " + name);
 }
 
+// Strings crossing into the solver, and back.
+//
+// SMT-LIB symbols are not ASCII-only: |naïve| is a legal quoted symbol, and it
+// reaches the solver, the model, the unsat core and the interpolant unchanged.
+// So both directions need an encoding that is declared rather than inherited
+// from whatever locale the session happens to run in.
+//
+// In:  Rf_translateCharUTF8() rather than CHAR(), so the solver is always
+//      handed UTF-8 regardless of how R marked the string.
+// Out: Rf_mkCharCE(..., CE_UTF8) rather than Rf_mkChar(), so R is told what it
+//      is being given instead of assuming native. (R stores pure ASCII
+//      unmarked either way, so this costs nothing in the common case.)
+//
+// On a UTF-8 session the old code round-tripped correctly by coincidence --
+// the bytes passed through and the locale agreed. That is the part worth
+// fixing: it was right by accident, not by construction.
+char const * utf8_arg(SEXP x, R_xlen_t i = 0) {
+    return Rf_translateCharUTF8(STRING_ELT(x, i));
+}
+
+SEXP utf8_string(std::string const & text) {
+    return Rf_mkCharCE(text.c_str(), CE_UTF8);
+}
+
 // A TRUE/FALSE argument from R onto one of SMTConfig's boolean options.
 // setOption() reports refusal through an out-parameter and a bool rather than
 // by throwing, so the result has to be checked: ignoring it is how an option
@@ -233,7 +257,7 @@ extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated) {
         if (TYPEOF(name) != STRSXP || Rf_length(name) != 1) {
             throw std::invalid_argument("name must be a single string");
         }
-        opensmt::PTRef var = handle->interp->theLogic().mkBoolVar(CHAR(STRING_ELT(name, 0)));
+        opensmt::PTRef var = handle->interp->theLogic().mkBoolVar(utf8_arg(name));
         opensmt::Logic & logic = handle->interp->theLogic();
         opensmt::PTRef term = (Rf_asLogical(negated) == TRUE) ? logic.mkNot(var) : var;
         handle->interp->getMainSolver().insertFormula(term);
@@ -354,7 +378,7 @@ extern "C" SEXP C_solver_run(SEXP xp, SEXP text) {
         if (TYPEOF(text) != STRSXP || Rf_length(text) != 1) {
             throw std::invalid_argument("SMT-LIB input must be a single string");
         }
-        run_script(*handle, CHAR(STRING_ELT(text, 0)));
+        run_script(*handle, utf8_arg(text));
         return R_NilValue;
     });
 }
@@ -394,7 +418,7 @@ extern "C" SEXP C_solver_model(SEXP xp) {
 
             opensmt::PTRef const term = logic.mkUninterpFun(sym, {});
             opensmt::PTRef const value = model->evaluate(term);
-            SET_STRING_ELT(names, at, Rf_mkChar(logic.getSymName(sym)));
+            SET_STRING_ELT(names, at, utf8_string(logic.getSymName(sym)));
 
             if (value == logic.getTerm_true()) {
                 SET_VECTOR_ELT(out, at, Rf_ScalarLogical(TRUE));
@@ -408,14 +432,14 @@ extern "C" SEXP C_solver_model(SEXP xp) {
                 SEXP num = PROTECT(Rf_ScalarReal(number.get_d()));
                 // num is protected across this allocation, then handed to a
                 // list that is itself protected.
-                Rf_setAttrib(num, exact_tag(), Rf_mkString(number.get_str().c_str()));
+                Rf_setAttrib(num, exact_tag(), Rf_ScalarString(utf8_string(number.get_str())));
                 SET_VECTOR_ELT(out, at, num);
                 UNPROTECT(1);
             } else {
                 // Anything else -- an uninterpreted sort's value, say --
                 // comes back as the solver's own printed form rather than
                 // being coerced into an R type it does not fit.
-                SET_VECTOR_ELT(out, at, Rf_mkString(logic.printTerm(value).c_str()));
+                SET_VECTOR_ELT(out, at, Rf_ScalarString(utf8_string(logic.printTerm(value))));
             }
             ++at;
         }
@@ -502,7 +526,7 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
         for (int i = 0; i < terms.size(); ++i) {
             std::string const * const name = term_names.tryGetNameForTerm(terms[i]);
             if (want_full) {
-                SET_STRING_ELT(out, i, Rf_mkChar(logic.printTerm(terms[i]).c_str()));
+                SET_STRING_ELT(out, i, utf8_string(logic.printTerm(terms[i])));
             } else {
                 // Without :print-cores-full every term here is a named one,
                 // so this lookup cannot fail -- but a null would be a silent
@@ -511,7 +535,7 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
                     UNPROTECT(1);
                     throw std::runtime_error("the solver reported an unnamed term in a named core");
                 }
-                SET_STRING_ELT(out, i, Rf_mkChar(name->c_str()));
+                SET_STRING_ELT(out, i, utf8_string(*name));
             }
             if (name != nullptr) ++named;
         }
@@ -524,7 +548,7 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
             for (int i = 0; i < terms.size(); ++i) {
                 std::string const * const name = term_names.tryGetNameForTerm(terms[i]);
                 SET_STRING_ELT(names, i,
-                               name != nullptr ? Rf_mkChar(name->c_str()) : Rf_mkChar(""));
+                               name != nullptr ? utf8_string(*name) : Rf_mkChar(""));
             }
             Rf_setAttrib(out, R_NamesSymbol, names);
             UNPROTECT(1);
@@ -569,7 +593,7 @@ extern "C" SEXP C_solver_interpolant(SEXP xp, SEXP names) {
         opensmt::ipartitions_t mask = 0;
 
         for (R_xlen_t i = 0; i < Rf_length(names); ++i) {
-            std::string const name(CHAR(STRING_ELT(names, i)));
+            std::string const name(utf8_arg(names, i));
 
             std::optional<opensmt::PTRef> const term = term_names.tryGetTermByName(name);
             if (!term.has_value()) {
@@ -601,7 +625,7 @@ extern "C" SEXP C_solver_interpolant(SEXP xp, SEXP names) {
             // pp(), as upstream's own get-interpolants uses: the pretty
             // printer, not printTerm, so the result reads like the SMT-LIB a
             // caller would write.
-            SET_STRING_ELT(out, i, Rf_mkChar(logic.pp(interpolants[i]).c_str()));
+            SET_STRING_ELT(out, i, utf8_string(logic.pp(interpolants[i])));
         }
         UNPROTECT(1);
         return out;

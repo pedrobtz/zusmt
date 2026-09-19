@@ -50,6 +50,39 @@ test_that("the interpolant for the other side is also one", {
   expect_false(grepl("z", itp))
 })
 
+test_that("a contradiction closed before the search still interpolates", {
+  # Raised in review of #13: s_False does not by itself mean a proof was
+  # recorded. When the simplifier closes the formula before the SAT search
+  # runs, the status is unsat with no search behind it -- and the
+  # preconditions InterpolationContext states are asserts, compiled out under
+  # NDEBUG, which is exactly how the #11 segfault reached users.
+  #
+  # Checked rather than assumed. Every degenerate shape returns a correct
+  # interpolant: `false` follows from a contradictory A and is inconsistent
+  # with anything, so it is the right answer, not a placeholder.
+  degenerate <- list(
+    c(decls = "", a = "false"),
+    c(decls = "", a = "(= 1 2)"),
+    c(decls = "(declare-const p Bool)", a = "(and p (not p))"),
+    c(decls = "(declare-const w Int)", a = "(and (> w 5) (< w 3))")
+  )
+
+  for (case in degenerate) {
+    s <- smt_solver("QF_LIA", interpolants = TRUE, unsat_cores = TRUE)
+    smt_assert(s, sprintf("%s (assert (! %s :named A)) (assert (! true :named B))",
+                          case[["decls"]], case[["a"]]))
+    expect_identical(smt_check(s), "unsat")
+
+    itp <- smt_interpolant(s, "A")
+    expect_length(itp, 1L)
+    expect_identical(itp, "false", info = case[["a"]])
+
+    # The unsat core reaches the proof by the same route, so it gets the same
+    # question asked of it.
+    expect_no_error(smt_unsat_core(s))
+  }
+})
+
 test_that("interpolation must be enabled when the solver is built", {
   s <- smt_solver("QF_LIA")
   smt_assert(s, sprintf("%s (assert (! %s :named A)) (assert (! %s :named B))",
