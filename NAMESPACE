@@ -3,6 +3,7 @@
 S3method(print,zusmt_solver)
 export(smt_assert)
 export(smt_check)
+export(smt_interpolant)
 export(smt_logics)
 export(smt_model)
 export(smt_release)

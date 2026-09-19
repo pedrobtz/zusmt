@@ -12,8 +12,8 @@ on Linux, macOS and Windows (see the CI matrix in [R-CMD-check.yaml](.github/wor
 ## Current state
 
 Stages 1–6 of [roadmap.md](roadmap.md) are done: the package has a working public API.
-`smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()`, `smt_unsat_core()` and
-`smt_release()` take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README,
+`smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()`, `smt_unsat_core()`,
+`smt_interpolant()` and `smt_release()` take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README,
 vignette) are next.
 
 The API is deliberately a front end to the solver's own language: `smt_assert()` accepts any

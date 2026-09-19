@@ -188,6 +188,44 @@ smt_model <- function(solver) {
   .Call(C_solver_model, solver$ptr)
 }
 
+#' A Craig interpolant between two groups of assertions
+#'
+#' Given assertions that are unsatisfiable together, split into a group `A`
+#' and everything else `B`, an interpolant is a formula that follows from `A`,
+#' contradicts `B`, and mentions only the symbols `A` and `B` share. It is a
+#' summary of why the two conflict, in their shared vocabulary -- which is
+#' what makes it useful for abstraction and for explaining a contradiction in
+#' terms neither side owns alone.
+#'
+#' Requires a solver created with `smt_solver(interpolants = TRUE)`, since
+#' whether a proof is recorded is fixed when the solver is built.
+#'
+#' @param solver A solver from [smt_solver()], created with
+#'   `interpolants = TRUE`, on which [smt_check()] has returned `"unsat"`.
+#' @param a Names of the assertions forming group `A`, as given with
+#'   `(! ... :named n)`. Every other assertion forms `B`.
+#' @return A character vector of interpolants in the solver's printed form,
+#'   usually of length one.
+#' @seealso [smt_solver()], [smt_unsat_core()]
+#' @export
+#' @examples
+#' s <- smt_solver("QF_LIA", interpolants = TRUE)
+#' smt_assert(s, "
+#'   (declare-const x Int)
+#'   (declare-const y Int)
+#'   (assert (! (and (> x 5) (= y x)) :named A))
+#'   (assert (! (< y 3) :named B))
+#' ")
+#' smt_check(s)
+#' smt_interpolant(s, "A")
+smt_interpolant <- function(solver, a) {
+  check_solver(solver)
+  if (!is.character(a) || length(a) == 0L || anyNA(a)) {
+    stop("`a` must be a character vector of assertion names", call. = FALSE)
+  }
+  .Call(C_solver_interpolant, solver$ptr, a)
+}
+
 #' Release a solver
 #'
 #' Frees the solver's memory without waiting for garbage collection. Using the

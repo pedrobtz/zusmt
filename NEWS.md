@@ -2,6 +2,11 @@
 
 * First release.
 
+* New `smt_interpolant()` returns a Craig interpolant between two groups of
+  named assertions, as an R value rather than printed output. Enabling
+  `interpolants = TRUE` made `(get-interpolants ...)` reachable; this makes
+  its result usable.
+
 * `smt_check()` gains `timeout`, a bound in seconds on a single solve.
   OpenSMT has none of its own -- `:timeout` is not one of its options, so
   `(set-option :timeout n)` is accepted and ignored -- which left an

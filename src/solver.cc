@@ -15,11 +15,14 @@
 #include <logics/Logic.h>
 #include <logics/LogicFactory.h>
 #include <options/SMTConfig.h>
+#include <common/Partitions.h>
 #include <common/TermNames.h>
+#include <proof/InterpolationContext.h>
 #include <unsatcores/UnsatCore.h>
 
 #include <memory>
 #include <stdexcept>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -527,6 +530,79 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
             UNPROTECT(1);
         }
 
+        UNPROTECT(1);
+        return out;
+    });
+}
+
+// A Craig interpolant for a partition of the assertions.
+//
+// Given A and B whose conjunction is unsatisfiable, an interpolant I follows
+// from A, is inconsistent with B, and mentions only symbols the two share.
+// `names` picks which named assertions form A; everything else asserted is B.
+//
+// Named assertions are the interface because that is how the solver tracks
+// them: each top-level assertion has an index, and a partition is a bitmask
+// over those indices. Reaching them by name through TermNames is what the
+// (get-interpolants) command does too -- but that one prints its result,
+// which is why this exists.
+extern "C" SEXP C_solver_interpolant(SEXP xp, SEXP names) {
+    return zusmt::with_firewall([&]() -> SEXP {
+        SolverHandle * handle = handle_from(xp);
+
+        if (TYPEOF(names) != STRSXP || Rf_length(names) == 0) {
+            throw std::invalid_argument("`a` must be a character vector of assertion names");
+        }
+        if (!handle->config->produce_inter()) {
+            throw std::runtime_error(
+                "interpolation was not enabled; create the solver with "
+                "smt_solver(interpolants = TRUE)");
+        }
+
+        opensmt::MainSolver & solver = handle->interp->getMainSolver();
+        if (solver.getStatus() != opensmt::s_False) {
+            throw std::runtime_error(
+                "an interpolant is only available after an unsatisfiable check");
+        }
+
+        opensmt::TermNames const & term_names = std::as_const(solver).getTermNames();
+        opensmt::ipartitions_t mask = 0;
+
+        for (R_xlen_t i = 0; i < Rf_length(names); ++i) {
+            std::string const name(CHAR(STRING_ELT(names, i)));
+
+            std::optional<opensmt::PTRef> const term = term_names.tryGetTermByName(name);
+            if (!term.has_value()) {
+                throw std::invalid_argument(
+                    "no assertion is named '" + name +
+                    "'; name them with (! ... :named " + name + ")");
+            }
+            // A named term that is not itself a top-level assertion has no
+            // index, so there is no partition bit to set for it. Saying so
+            // beats computing an interpolant against a silently smaller A.
+            if (!handle->interp->is_top_level_assertion(*term)) {
+                throw std::invalid_argument(
+                    "'" + name + "' names a term that is not a top-level assertion");
+            }
+            int const index = handle->interp->get_assertion_index(*term);
+            if (index < 0) {
+                throw std::runtime_error("'" + name + "' has no assertion index");
+            }
+            opensmt::setbit(mask, static_cast<unsigned>(index));
+        }
+
+        std::unique_ptr<opensmt::InterpolationContext> context = solver.getInterpolationContext();
+        opensmt::vec<opensmt::PTRef> interpolants;
+        context->getSingleInterpolant(interpolants, mask);
+
+        opensmt::Logic & logic = handle->interp->theLogic();
+        SEXP out = PROTECT(Rf_allocVector(STRSXP, interpolants.size()));
+        for (int i = 0; i < interpolants.size(); ++i) {
+            // pp(), as upstream's own get-interpolants uses: the pretty
+            // printer, not printTerm, so the result reads like the SMT-LIB a
+            // caller would write.
+            SET_STRING_ELT(out, i, Rf_mkChar(logic.pp(interpolants[i]).c_str()));
+        }
         UNPROTECT(1);
         return out;
     });

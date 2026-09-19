@@ -100,6 +100,32 @@ record a proof when it builds the solver. Asking afterwards cannot work, and is 
 smt_assert(smt_solver("QF_LIA"), "(set-option :produce-unsat-cores true)")
 ```
 
+## Summarising a conflict
+
+An unsat core says *which* assertions conflict. An interpolant says *what* the conflict is, in the
+vocabulary the two sides share.
+
+Split the assertions into a group `A` and everything else. A Craig interpolant follows from `A`,
+contradicts the rest, and mentions only symbols both sides use:
+
+```{r}
+i <- smt_solver("QF_LIA", interpolants = TRUE)
+smt_assert(i, "
+  (declare-const x Int)
+  (declare-const y Int)
+  (declare-const z Int)
+  (assert (! (and (> x 5) (= y x)) :named A))
+  (assert (! (and (< z 3) (= z y)) :named B))
+")
+smt_check(i)
+smt_interpolant(i, "A")
+```
+
+`A` forces `y` to be at least 6 and the other group forces it below 3. The interpolant says just
+that, and says it about `y` alone -- `x` belongs to `A`, `z` to the other side, and neither appears.
+That is the useful part: it explains the contradiction without either group's private detail, which
+is what makes interpolants a building block for abstraction and invariant generation.
+
 ## Exact values
 
 Solvers compute in rationals. Many rationals are not doubles, so a model value carries both: the
