@@ -4,6 +4,24 @@
 
 - First release.
 
+- Fixed a crash. `(set-option :produce-unsat-cores true)` on a live
+  solver segfaulted the R session as soon as a core was requested:
+  OpenSMT decides whether to record a proof when the SAT solver is
+  constructed, and setting the option afterwards flipped the flag with
+  no proof behind it. Upstream guards `:produce-proofs` and
+  `:produce-interpolants` against exactly this and omits
+  `:produce-unsat-cores`; a patch rule adds it, so the attempt is now
+  refused rather than fatal.
+
+- New
+  [`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
+  reports which assertions are unsatisfiable together, and
+  [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md)
+  gains `unsat_cores` and `interpolants`. They are constructor arguments
+  rather than options to set later because that is the only point at
+  which they can take effect – which is also what made unsat cores and
+  Craig interpolation unreachable from R before.
+
 - Documentation: a README and a
   [`vignette("zusmt")`](https://pedrobtz.github.io/zusmt/articles/zusmt.md)
   built around problems that run, a pkgdown reference index, and

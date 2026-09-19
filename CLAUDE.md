@@ -19,7 +19,8 @@ are done: the package has a working public API.
 [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md),
 [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md),
 [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md),
-[`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md)
+[`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md),
+[`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
 and
 [`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md)
 take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind,
@@ -37,6 +38,17 @@ work and are easy to break:
   protected and reached by subclassing `Interpret` in our own code —
   deliberately not by patching the vendored header, so a bump does not
   disturb it.
+- **Some options can only be set before the solver exists**, and those
+  are
+  [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md)
+  arguments, not something to `(set-option)` later. OpenSMT allocates
+  the SAT solver’s `ResolutionProof` in its constructor from
+  `produce_proof()`, so `:produce-unsat-cores`, `:produce-interpolants`
+  and `:produce-proofs` are meaningless afterwards – and the first of
+  those used to *segfault* rather than say so, because upstream’s
+  `isPreInitializationOption()` listed the other two and not it. Patch
+  rule 12 adds it. `C_solver_new()` sets these on the config before
+  `(set-logic)`, which is the only window there is.
 - **Diagnostics are captured and raised as conditions.**
   `zusmt::begin_capture()` redirects the shim’s streams into a buffer,
   and `run_script()` turns anything containing `(error` — or a non-zero

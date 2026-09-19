@@ -89,6 +89,46 @@ smt_model(u)
 #> ! a model is only available after a satisfiable check
 ```
 
+## Why there is no solution
+
+`"unsat"` on its own does not say which assertions are to blame. A
+solver created with `unsat_cores = TRUE` can report the subset that
+already conflicts, which is usually a small part of a large problem:
+
+``` r
+
+conflict <- smt_solver("QF_LIA", unsat_cores = TRUE)
+smt_assert(conflict, "
+  (declare-const x Int)
+  (declare-const y Int)
+  (assert (! (> x 10) :named x-large))
+  (assert (! (< x 5)  :named x-small))
+  (assert (! (= y 1)  :named y-fixed))
+")
+smt_check(conflict)
+#> [1] "unsat"
+smt_unsat_core(conflict)
+#>                         x-large                         x-small 
+#> "(not (<= (- 10) (* (- 1) x)))"                "(not (<= 5 x))"
+```
+
+`y-fixed` is absent because it is not part of the contradiction – that
+is the point of a core. Name assertions with `(! ... :named n)` and the
+names come back with them.
+
+The argument goes on
+[`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md)
+rather than being set later because OpenSMT decides whether to record a
+proof when it builds the solver. Asking afterwards cannot work, and is
+refused:
+
+``` r
+
+smt_assert(smt_solver("QF_LIA"), "(set-option :produce-unsat-cores true)")
+#> Error in `smt_assert()`:
+#> ! (error "set-option failed for :produce-unsat-cores: Option cannot be changed at this point")
+```
+
 ## Exact values
 
 Solvers compute in rationals. Many rationals are not doubles, so a model

@@ -308,7 +308,7 @@
 <div class="section level2">
 <h2 id="standing-concerns">Standing concerns<a class="anchor" aria-label="anchor" href="#standing-concerns"></a></h2>
 <ul><li>
-<strong>Version bumps</strong>: <code>vendor.sh</code> + patch series is the whole maintenance story. If a patch stops applying, that is the signal upstream changed something we depend on.</li>
+<strong>Version bumps</strong>: <code>vendor.sh</code> + patch series is the whole maintenance story. If a patch stops applying, that is the signal upstream changed something we depend on. Patch rule 12 is the one to watch: it fixes an upstream crash (<code>:produce-unsat-cores</code> set after initialization), so a bump whose re-vendor fails on it probably means upstream fixed it too, and the rule can go.</li>
 <li>
 <strong>C++20 on oldrel</strong>: if oldrel-1 ever fails to compile the vendored tree, the choice is dropping the platform from the matrix or <code>Requires: R (&gt;= x.y)</code>, not downgrading upstream.</li>
 <li>

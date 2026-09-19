@@ -36,6 +36,8 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="zusmt-010">zusmt 0.1.0<a class="anchor" aria-label="anchor" href="#zusmt-010"></a></h2>
 <ul><li><p>First release.</p></li>
+<li><p>Fixed a crash. <code>(set-option :produce-unsat-cores true)</code> on a live solver segfaulted the R session as soon as a core was requested: OpenSMT decides whether to record a proof when the SAT solver is constructed, and setting the option afterwards flipped the flag with no proof behind it. Upstream guards <code>:produce-proofs</code> and <code>:produce-interpolants</code> against exactly this and omits <code>:produce-unsat-cores</code>; a patch rule adds it, so the attempt is now refused rather than fatal.</p></li>
+<li><p>New <code><a href="../reference/smt_unsat_core.html">smt_unsat_core()</a></code> reports which assertions are unsatisfiable together, and <code><a href="../reference/smt_solver.html">smt_solver()</a></code> gains <code>unsat_cores</code> and <code>interpolants</code>. They are constructor arguments rather than options to set later because that is the only point at which they can take effect – which is also what made unsat cores and Craig interpolation unreachable from R before.</p></li>
 <li><p>Documentation: a README and a <code><a href="../articles/zusmt.html">vignette("zusmt")</a></code> built around problems that run, a pkgdown reference index, and <code>.github/CONTRIBUTING.md</code> covering how to bump the bundled solver.</p></li>
 <li><p>Bundles OpenSMT v2.9.2 (commit <code>34bc1b8</code>, 2025-06-16).</p></li>
 <li><p>New <code><a href="../reference/smt_logics.html">smt_logics()</a></code> reports the supported logics, read from the single definition in the C++ layer.</p></li>
