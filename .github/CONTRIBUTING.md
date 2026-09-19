@@ -58,8 +58,13 @@ satisfiable and an unsatisfiable probe in `tests/testthat/test-logics.R` fails t
 
 ## CI
 
-`R-CMD-check` runs on the GitHub runners and in CRAN-like containers; `native-checks` runs valgrind,
-gctorture, rchk and LTO; `vendor` guards the bundled sources; `coverage` reports both R and native
-coverage. The `sanitizers` leg is parked pending a fix in
-[r-actions](https://github.com/pedrobtz/r-actions) — see the comment in
-`.github/workflows/native-checks.yml`.
+`R-CMD-check` runs on the GitHub runners and in CRAN-like containers, including the `nosuggests`
+and `nold` flavours; `native-checks` runs the sanitizers (ASan and UBSan, on both clang and GCC
+containers), valgrind, gctorture, rchk and LTO; `vendor` guards the bundled sources; `coverage`
+reports both R and native coverage.
+
+Two of those legs were parked for most of this package's life on bugs in
+[r-actions](https://github.com/pedrobtz/r-actions) and were unparked in PR #10. If you are adding a
+leg and it fails in a way that looks like the package, check first whether the flags reach the
+compile line at all: R compiles a package declaring a C++ standard with `$(CXXnn)` and
+`$(CXXnnFLAGS)`, so anything set only in `CXXFLAGS` is silently absent here.

@@ -21,12 +21,15 @@ name: coverage
 
 jobs:
   coverage:
-    uses: pedrobtz/r-actions/.github/workflows/coverage.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/coverage.yml@v1
     permissions:
       contents: write
     with:
       native: true
-      # TRIAL: native-run deliberately removed. r-actions@main now runs each
-      # file from inside tests/, which is the fix this override was standing in
-      # for. If the native gcov table comes back non-empty without it, the
-      # upstream loop is right and this override can go for good.
+      # No native-run override. There used to be one -- `cd tests && Rscript
+      # testthat.R` -- because the upstream exercise loop ran `Rscript
+      # tests/*.R` from the repository root, where test_check()'s relative
+      # test_dir("testthat") finds nothing and reports "No test files found".
+      # r-actions runs each file from inside tests/ now, so the override is
+      # redundant; dropped and confirmed by a non-empty native gcov table in
+      # the trial (#10).

@@ -64,5 +64,7 @@ Checked with `--as-cran` on:
   clang 22 and GCC 16
 * R built `--disable-long-double` (NOLD)
 
-The compiled code is additionally checked under valgrind, gctorture, rchk and
-link-time optimisation.
+The compiled code is additionally checked under AddressSanitizer and
+UndefinedBehaviorSanitizer (on both clang and GCC containers), valgrind,
+gctorture, rchk and link-time optimisation. The `nosuggests` flavour is also
+checked.

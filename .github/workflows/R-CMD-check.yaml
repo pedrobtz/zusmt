@@ -13,7 +13,7 @@ permissions: read-all
 
 jobs:
   R-CMD-check:
-    uses: pedrobtz/r-actions/.github/workflows/r-cmd-check.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/r-cmd-check.yml@v1
     with:
       # nold: R built --disable-long-double, which matters for a package whose
       # model values are rationals converted to doubles.
