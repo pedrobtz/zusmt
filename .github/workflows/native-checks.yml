@@ -15,18 +15,20 @@ name: native-checks
 permissions: read-all
 
 jobs:
-  # TRIAL: re-enabled against r-actions@main, which now sets the
-  # standard-specific compiler variables this package needed --
+  # Parked for most of this package's life, and unparked by the trial in #10.
+  # It needed two fixes in r-actions, both of them the same mistake in
+  # different places: flags that reach CC/CXX and CFLAGS/CXXFLAGS do not reach
+  # a package that declares a C++ standard, because R compiles that with
+  # $(CXXnn) and $(CXXnnFLAGS). This package declares C++20, so it took the
+  # variables nothing was setting.
   #
-  #   CXX11/CXX14/CXX17/CXX20 = clang++   plus their *FLAGS
-  #
-  # Note the divergence from what the disabled-block below asked for:
-  # r-actions sets CXXnnFLAGS but deliberately leaves CXXnnSTD alone, on the
-  # reasoning that Makeconf's own -std=gnu++nn suits clang++. This leg is the
-  # test of that reasoning. If configure again reports GMP missing on a runner
-  # where GMP is installed, CXXnnSTD is why.
+  # CXXnnSTD is deliberately left alone upstream, on the reasoning that
+  # Makeconf's own -std=gnu++nn suits clang++. The trial confirmed it: the
+  # compile line came out as `clang++ -std=gnu++20 ... -fsanitize=undefined`.
+  # If configure ever reports GMP missing on a runner where GMP is installed,
+  # CXXnnSTD is the first thing to suspect.
   sanitizers:
-    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
     with:
       asan: true
       # The gcc-asan image compiles with
@@ -51,16 +53,16 @@ jobs:
       gcc-ubsan-flags: -fno-sanitize=bounds-strict
 
   valgrind:
-    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@v1
     with:
       # The suite solves a pigeonhole instance, and valgrind is ~20-50x.
       timeout-minutes: 90
 
   lto:
-    uses: pedrobtz/r-actions/.github/workflows/lto.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/lto.yml@v1
 
   gctorture:
-    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@v1
 
   rchk:
-    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@main
+    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@v1
