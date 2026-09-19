@@ -8,9 +8,9 @@ First submission of zusmt.
 
 ```
 * checking installed package size ... NOTE
-  installed size is 44.9Mb
+  installed size is 56.1Mb
     sub-directories of 1Mb or more:
-      libs  44.8Mb
+      libs  55.9Mb
 ```
 
 The package bundles the OpenSMT satisfiability modulo theories solver (87
@@ -19,8 +19,33 @@ so that solving does not require a separately installed solver binary. The
 size is almost entirely the compiled solver in `libs/`, and there is no
 subset of it that could be dropped while leaving a working solver.
 
-The figure above is what the check reports on the Linux builders; the same
-sources install at about 2.4Mb on macOS.
+**The source package is 0.5Mb, and 96% of the installed size is debug
+information.** Measuring the sections of the 62.0Mb `zusmt.so` produced by the
+GCC container:
+
+```
+   34.9Mb  .debug_info
+   11.1Mb  .debug_loclists
+    6.5Mb  .debug_str
+    6.8Mb  other .debug_* sections
+  -------
+   59.3Mb  debug sections  (96%)
+    2.7Mb  everything else, of which .text is 1.9Mb
+```
+
+That 2.7Mb is the real footprint of the compiled solver, and it agrees with
+the platforms that do not carry DWARF in the shared object: the same sources
+install at 2.5Mb on macOS, and the r-devel clang container reports no size
+note at all. The difference is `-g` in R's default `CXXFLAGS` applied to 87
+translation units of template-heavy C++, not anything the package chooses.
+
+GMP is linked dynamically (`-lgmpxx -lgmp`), so it contributes nothing to the
+figure.
+
+We have deliberately not stripped the library or overridden the compiler
+flags to reduce this: the flags belong to the builder, and a package that
+quietly discards debug information is worse to debug when it does fail on a
+platform we cannot test.
 
 ## Bundled third-party sources
 
