@@ -33,7 +33,8 @@ stage.
 - Decide the **API surface**: (a) SMT-LIB string in / result out via
   `Interpret`, (b) a term-building API over `Logic`/`MainSolver`, or (c)
   both. Recommendation: (a) first — smallest binding, fastest to a
-  working package — then (b) once the build is stable.
+  working package — then (b) once the build is stable. **(a)
+  shipped; (b) deferred past 0.1.0 — see Stage 10.**
 - Decide **GMP strategy**: system GMP everywhere (recommended; matches
   CRAN’s `gmp` package) vs. bundling. Bundling GMP is out of scope — it
   is LGPL and autotools-built.
@@ -503,6 +504,38 @@ this repository:
 2.  `nosuggests` — parked on `--no-build-vignettes` in that job’s
     `build_args`. CRAN runs this flavour itself, so the submission is
     checked against it whether or not our CI is.
+
+## Stage 10 — A term-building API — **deferred past 0.1.0**
+
+Stage 0 offered two API surfaces and recommended taking them in order:
+(a) SMT-LIB text in, results out, then “(b) once the build is stable”.
+The build has been stable for a while. (b) is deliberately not in 0.1.0,
+and this stage exists so that is a decision on the record rather than an
+omission someone rediscovers.
+
+What (b) would be: building terms from R against `Logic`/`MainSolver` —
+`smt_int("x")`, `smt_gt(x, 5)` and so on — instead of composing SMT-LIB
+strings. The argument for it is real. Constructing SMT-LIB by
+[`paste()`](https://rdrr.io/r/base/paste.html) makes the caller
+responsible for quoting and for escaping symbols, and nothing checks a
+malformed term until the parser rejects it.
+
+Why it waits:
+
+- It is a much wider C++ surface than everything in stages 5–9 put
+  together, and every term type has to survive the same review the
+  current boundary got. `PTRef` is an index into the logic’s term table,
+  so an R-side term handle outlives nothing safely on its own — it is
+  only meaningful paired with the solver that made it, and that is a
+  lifetime problem the external-pointer pattern here does not yet solve.
+- It does not replace (a). The text API is how SMT-LIB is written, read
+  and shared, and the corpus in `inst/smt2/` is text. (b) is an
+  addition, so nothing in 0.1.0 becomes wrong.
+- 0.1.0 is going to CRAN. A first submission that bundles a solver is
+  already asking a reviewer for a lot.
+
+Nothing in the current design forecloses it: `RInterpret` already
+exposes `theLogic()`, which is the entry point (b) would build on.
 
 ## Standing concerns
 

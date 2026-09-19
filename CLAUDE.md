@@ -27,6 +27,12 @@ and
 take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind,
 gctorture, rchk, coverage) and Stage 8 (README, vignette) are next.
 
+A term-building API over `Logic`/`MainSolver` – Stage 0’s option (b) –
+is **deferred past 0.1.0**, recorded as Stage 10 of
+[roadmap.md](https://pedrobtz.github.io/zusmt/roadmap.md). Do not start
+it as though it were an oversight; it is a decision.
+`RInterpret::theLogic()` is the entry point it would build on.
+
 The API is deliberately a front end to the solver’s own language:
 [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
 accepts any SMT-LIB2 commands, not only assertions. Two things make that

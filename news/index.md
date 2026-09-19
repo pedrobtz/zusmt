@@ -2,7 +2,8 @@
 
 ## zusmt 0.1.0
 
-- First release.
+- First release. Problems are written in ‘SMT-LIB’ text; a term-building
+  API is planned for a later version.
 
 - Strings crossing to and from the solver now declare UTF-8 rather than
   inheriting the session’s encoding. SMT-LIB quoted symbols may be

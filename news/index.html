@@ -35,7 +35,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="zusmt-010">zusmt 0.1.0<a class="anchor" aria-label="anchor" href="#zusmt-010"></a></h2>
-<ul><li><p>First release.</p></li>
+<ul><li><p>First release. Problems are written in ‘SMT-LIB’ text; a term-building API is planned for a later version.</p></li>
 <li><p>Strings crossing to and from the solver now declare UTF-8 rather than inheriting the session’s encoding. SMT-LIB quoted symbols may be non-ASCII, and <code>|naïve|</code> previously came back marked native – correct on a UTF-8 session and misdecoded on any other.</p></li>
 <li><p>New <code><a href="../reference/smt_interpolant.html">smt_interpolant()</a></code> returns a Craig interpolant between two groups of named assertions, as an R value rather than printed output. Enabling <code>interpolants = TRUE</code> made <code>(get-interpolants ...)</code> reachable; this makes its result usable.</p></li>
 <li><p><code><a href="../reference/smt_check.html">smt_check()</a></code> gains <code>timeout</code>, a bound in seconds on a single solve. OpenSMT has none of its own – <code>:timeout</code> is not one of its options, so <code>(set-option :timeout n)</code> is accepted and ignored – which left an unbounded solve able to hang an R session until interrupted. The deadline is checked where the interrupt poll already is, in the solver’s own <code>okContinue()</code>, so an expired bound ends the search by unwinding through its destructors. A timed-out solve returns <code>"unknown"</code> and warns with class <code>zusmt_timeout</code>; a solve that reaches an answer reports it however late.</p></li>
