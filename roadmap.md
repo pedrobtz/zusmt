@@ -389,7 +389,9 @@ What the `cran-extrachecks` pass changed:
 ## Standing concerns
 
 - **Version bumps**: `vendor.sh` + patch series is the whole maintenance story. If a patch stops
-  applying, that is the signal upstream changed something we depend on.
+  applying, that is the signal upstream changed something we depend on. Patch rule 12 is the one to watch:
+  it fixes an upstream crash (`:produce-unsat-cores` set after initialization), so a bump whose
+  re-vendor fails on it probably means upstream fixed it too, and the rule can go.
 - **C++20 on oldrel**: if oldrel-1 ever fails to compile the vendored tree, the choice is dropping the
   platform from the matrix or `Requires: R (>= x.y)`, not downgrading upstream.
 - **Windows GMP** is the most likely blocker; Stage 1 exists to find it early.

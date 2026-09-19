@@ -275,6 +275,31 @@ for f in $(grep -rlE 'zusmt::(rout|rerr|fatal|pseudo_rand|pseudo_srand|alloc_pri
 done
 echo "    shim include added to ${n} files"
 
+# 12. A crash, not a portability problem. Setting :produce-unsat-cores after
+#    the solver exists segfaults R -- reproduced from the public API, and the
+#    only order this package can produce, because smt_solver() runs set-logic
+#    at construction.
+#
+#    produce_proof() is defined as "produce_inter or produce_unsat_cores or
+#    produce_proofs", but the SAT solver allocates its ResolutionProof once,
+#    in its constructor, from that same predicate. Setting the option later
+#    flips the predicate with no proof to go with it, and getResolutionProof()
+#    guards only with assert() -- compiled out under NDEBUG, which is how R
+#    builds packages. It binds a reference to a null pointer and
+#    UnsatCoreBuilder walks it.
+#
+#    Upstream already knows this class of option cannot move: the predicate
+#    below lists produce_inter and produce_proofs for exactly this reason. It
+#    just omits produce_unsat_cores, which is the entire bug. Adding it makes
+#    the late set-option fail the way :produce-interpolants already does --
+#    "Option cannot be changed at this point" -- instead of killing the
+#    session. C_solver_new() sets the option before set-logic, which is
+#    before setUsedForInitiliazation(), so the supported path still works.
+echo "==> closing the unsat-core crash"
+patch_exact options/SMTConfig.h \
+  's@strcmp(o_name, o_produce_proofs) == 0@& || strcmp(o_name, o_produce_unsat_cores) == 0@' \
+  'isPreInitializationOption(): :produce-unsat-cores cannot move either'
+
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
 # nothing here patches. Cheap to assert, and it needs no linker.

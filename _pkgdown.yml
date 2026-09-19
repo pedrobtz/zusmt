@@ -11,6 +11,7 @@ reference:
   - smt_assert
   - smt_check
   - smt_model
+  - smt_unsat_core
   - print.zusmt_solver
 
 - title: Housekeeping

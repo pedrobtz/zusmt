@@ -15,10 +15,13 @@
 #include <logics/Logic.h>
 #include <logics/LogicFactory.h>
 #include <options/SMTConfig.h>
+#include <common/TermNames.h>
+#include <unsatcores/UnsatCore.h>
 
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -27,7 +30,7 @@ namespace {
 // protected members, and exposes only getMainSolver(). Subclassing is how a
 // consumer is meant to reach the rest, and it beats patching the vendored
 // header: nothing here has to be re-applied at the next version bump.
-class RInterpret : public opensmt::Interpret {
+class RInterpret final : public opensmt::Interpret {
 public:
     using opensmt::Interpret::Interpret;
 
@@ -155,9 +158,29 @@ void check_logic_supported(std::string const & name) {
     throw std::invalid_argument("unsupported logic: " + name);
 }
 
+// A TRUE/FALSE argument from R onto one of SMTConfig's boolean options.
+// setOption() reports refusal through an out-parameter and a bool rather than
+// by throwing, so the result has to be checked: ignoring it is how an option
+// silently fails to take effect.
+void set_flag_option(opensmt::SMTConfig & config, char const * option, SEXP flag,
+                     char const * argument) {
+    if (TYPEOF(flag) != LGLSXP || Rf_length(flag) != 1 ||
+        LOGICAL(flag)[0] == NA_LOGICAL) {
+        throw std::invalid_argument(std::string("`") + argument +
+                                    "` must be TRUE or FALSE");
+    }
+    if (LOGICAL(flag)[0] != TRUE) return;
+
+    char const * message = nullptr;
+    if (!config.setOption(option, opensmt::SMTOption(1), message)) {
+        throw std::runtime_error(std::string("could not enable ") + argument + ": " +
+                                 (message != nullptr ? message : "unknown reason"));
+    }
+}
+
 }  // namespace
 
-extern "C" SEXP C_solver_new(SEXP logic_name) {
+extern "C" SEXP C_solver_new(SEXP logic_name, SEXP unsat_cores, SEXP interpolants) {
     return zusmt::with_firewall([&]() -> SEXP {
         if (TYPEOF(logic_name) != STRSXP || Rf_length(logic_name) != 1) {
             throw std::invalid_argument("logic must be a single string");
@@ -167,6 +190,18 @@ extern "C" SEXP C_solver_new(SEXP logic_name) {
 
         auto handle = std::make_unique<SolverHandle>();
         handle->config = std::make_unique<opensmt::SMTConfig>();
+
+        // Before set-logic, and it has to be: the SAT solver allocates its
+        // ResolutionProof in its constructor, so an option that decides
+        // whether there is a proof at all is only meaningful while no solver
+        // exists. SMTConfig agrees -- it refuses these three once it has been
+        // used for initialization -- which is why they are arguments to
+        // smt_solver() rather than something to (set-option) later.
+        set_flag_option(*handle->config, opensmt::SMTConfig::o_produce_unsat_cores,
+                        unsat_cores, "unsat_cores");
+        set_flag_option(*handle->config, opensmt::SMTConfig::o_produce_inter,
+                        interpolants, "interpolants");
+
         handle->interp = std::make_unique<RInterpret>(*handle->config);
 
         // The interpreter builds its logic and solver when it sees set-logic,
@@ -350,6 +385,115 @@ extern "C" SEXP C_solver_model(SEXP xp) {
 
         Rf_setAttrib(out, R_NamesSymbol, names);
         UNPROTECT(2);
+        return out;
+    });
+}
+
+// The unsat core: which assertions are already unsatisfiable together.
+//
+// Read from the solver rather than parsed out of (get-unsat-core) output,
+// the same choice the model reader makes and for the same reason -- the
+// printed form is upstream's to change.
+//
+// `named_only` picks between two genuinely different answers. SMT-LIB defines
+// an unsat core over *named* assertions only, so a script that names nothing
+// has an empty core by definition; that is what the SMT-LIB command reports
+// and what named_only = TRUE reproduces. It is also useless to a caller who
+// did not use (! ... :named n), which in R is the common case, so the default
+// reports the core's actual terms instead. Upstream already supports both --
+// UnsatCoreBuilder branches on :print-cores-full -- so this selects that
+// option rather than reimplementing either behaviour.
+extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
+    return zusmt::with_firewall([&]() -> SEXP {
+        SolverHandle * handle = handle_from(xp);
+
+        if (TYPEOF(named_only) != LGLSXP || Rf_length(named_only) != 1 ||
+            LOGICAL(named_only)[0] == NA_LOGICAL) {
+            throw std::invalid_argument("`named_only` must be TRUE or FALSE");
+        }
+        bool const want_full = LOGICAL(named_only)[0] != TRUE;
+
+        if (!handle->config->produce_unsat_cores()) {
+            throw std::runtime_error(
+                "unsat cores were not enabled; create the solver with "
+                "smt_solver(unsat_cores = TRUE)");
+        }
+
+        opensmt::MainSolver & solver = handle->interp->getMainSolver();
+        if (solver.getStatus() != opensmt::s_False) {
+            // getUnsatCore() checks this too and throws ApiException, which
+            // the firewall would convert anyway. Checking first is what lets
+            // the message name the R function the caller actually used.
+            throw std::runtime_error(
+                "an unsat core is only available after an unsatisfiable check");
+        }
+
+        // :print-cores-full is read while the core is built, not while the
+        // solver is, so it can be chosen per call -- but it also governs the
+        // (get-unsat-core) command, which must keep SMT-LIB's meaning. Hence
+        // set, build, restore, with the restore on a destructor so an
+        // exception out of build() cannot leave it flipped.
+        struct FullCoreOption {
+            opensmt::SMTConfig & config;
+            bool const previous;
+
+            FullCoreOption(opensmt::SMTConfig & config_, bool wanted)
+                : config{config_}, previous{config_.print_cores_full()} {
+                set(wanted);
+            }
+            ~FullCoreOption() { set(previous); }
+
+            void set(bool value) {
+                char const * message = nullptr;
+                config.setOption(opensmt::SMTConfig::o_print_cores_full,
+                                 opensmt::SMTOption(value ? 1 : 0), message);
+            }
+        } const full_core{*handle->config, want_full};
+
+        std::unique_ptr<opensmt::UnsatCore> const core = solver.getUnsatCore();
+        opensmt::vec<opensmt::PTRef> const & terms = core->getTerms();
+        opensmt::Logic & logic = handle->interp->theLogic();
+        // as_const: the non-const getTermNames() is deprecated in favour of
+        // the mutating helpers, and only the read-only overload is wanted
+        // here. Upstream's own getInterpolants() reaches for it the same way.
+        opensmt::TermNames const & term_names = std::as_const(solver).getTermNames();
+
+        SEXP out = PROTECT(Rf_allocVector(STRSXP, terms.size()));
+        SEXP names = R_NilValue;
+        int named = 0;
+
+        for (int i = 0; i < terms.size(); ++i) {
+            std::string const * const name = term_names.tryGetNameForTerm(terms[i]);
+            if (want_full) {
+                SET_STRING_ELT(out, i, Rf_mkChar(logic.printTerm(terms[i]).c_str()));
+            } else {
+                // Without :print-cores-full every term here is a named one,
+                // so this lookup cannot fail -- but a null would be a silent
+                // empty string, so say so instead.
+                if (name == nullptr) {
+                    UNPROTECT(1);
+                    throw std::runtime_error("the solver reported an unnamed term in a named core");
+                }
+                SET_STRING_ELT(out, i, Rf_mkChar(name->c_str()));
+            }
+            if (name != nullptr) ++named;
+        }
+
+        // Names as an R attribute, so a caller who used (! ... :named n) gets
+        // them back without giving up the terms. Omitted entirely when
+        // nothing was named, rather than filling a vector with "".
+        if (want_full && named > 0) {
+            names = PROTECT(Rf_allocVector(STRSXP, terms.size()));
+            for (int i = 0; i < terms.size(); ++i) {
+                std::string const * const name = term_names.tryGetNameForTerm(terms[i]);
+                SET_STRING_ELT(names, i,
+                               name != nullptr ? Rf_mkChar(name->c_str()) : Rf_mkChar(""));
+            }
+            Rf_setAttrib(out, R_NamesSymbol, names);
+            UNPROTECT(1);
+        }
+
+        UNPROTECT(1);
         return out;
     });
 }

@@ -12,8 +12,8 @@ on Linux, macOS and Windows (see the CI matrix in [R-CMD-check.yaml](.github/wor
 ## Current state
 
 Stages 1–6 of [roadmap.md](roadmap.md) are done: the package has a working public API.
-`smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()` and `smt_release()` take SMT-LIB2 text
-and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README,
+`smt_solver()`, `smt_assert()`, `smt_check()`, `smt_model()`, `smt_unsat_core()` and
+`smt_release()` take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind, gctorture, rchk, coverage) and Stage 8 (README,
 vignette) are next.
 
 The API is deliberately a front end to the solver's own language: `smt_assert()` accepts any
@@ -23,6 +23,13 @@ SMT-LIB2 commands, not only assertions. Two things make that work and are easy t
   `Interpret::getMainSolver()` is public, so [src/solver.cc](src/solver.cc) reads status and model
   from there. `logic` and `user_declarations` are protected and reached by subclassing `Interpret`
   in our own code — deliberately not by patching the vendored header, so a bump does not disturb it.
+- **Some options can only be set before the solver exists**, and those are `smt_solver()`
+  arguments, not something to `(set-option)` later. OpenSMT allocates the SAT solver's
+  `ResolutionProof` in its constructor from `produce_proof()`, so `:produce-unsat-cores`,
+  `:produce-interpolants` and `:produce-proofs` are meaningless afterwards -- and the first of
+  those used to *segfault* rather than say so, because upstream's `isPreInitializationOption()`
+  listed the other two and not it. Patch rule 12 adds it. `C_solver_new()` sets these on the
+  config before `(set-logic)`, which is the only window there is.
 - **Diagnostics are captured and raised as conditions.** `zusmt::begin_capture()` redirects the
   shim's streams into a buffer, and `run_script()` turns anything containing `(error` — or a
   non-zero parse status — into an exception the firewall converts to an R error. Output written

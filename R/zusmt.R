@@ -7,21 +7,75 @@
 #' @param logic An SMT-LIB logic name; [smt_logics()] returns the ones this
 #'   package supports. They cover uninterpreted functions, linear integer and
 #'   real arithmetic, their combinations, difference logic and arrays.
+#' @param unsat_cores Whether to record enough of the search to report an
+#'   unsat core with [smt_unsat_core()]. Costs time and memory on every solve,
+#'   so it is off by default.
+#' @param interpolants Whether to enable Craig interpolation, after which
+#'   `(get-interpolants ...)` can be sent with [smt_assert()]. There is no
+#'   dedicated R function for it yet; the output is printed rather than
+#'   returned.
 #' @return A solver handle, to be passed to the other `smt_*()` functions.
-#' @seealso [smt_assert()], [smt_check()], [smt_model()]
+#'
+#'   `unsat_cores` and `interpolants` are arguments here, rather than options
+#'   to set later with [smt_assert()], because the solver decides whether to
+#'   record a proof when it is built. Setting them afterwards cannot work, and
+#'   the solver rejects the attempt.
+#' @seealso [smt_assert()], [smt_check()], [smt_model()], [smt_unsat_core()]
 #' @export
 #' @examples
 #' s <- smt_solver("QF_LIA")
 #' smt_assert(s, "(declare-const x Int) (assert (> x 3))")
 #' smt_check(s)
-smt_solver <- function(logic = "QF_UF") {
+smt_solver <- function(logic = "QF_UF", unsat_cores = FALSE,
+                       interpolants = FALSE) {
   if (!is.character(logic) || length(logic) != 1L) {
     stop("`logic` must be a single string", call. = FALSE)
   }
   structure(
-    list(ptr = .Call(C_solver_new, logic), logic = logic),
+    list(
+      ptr = .Call(C_solver_new, logic, unsat_cores, interpolants),
+      logic = logic
+    ),
     class = "zusmt_solver"
   )
+}
+
+#' The unsat core of an unsatisfiable problem
+#'
+#' The subset of the assertions that is already unsatisfiable on its own --
+#' the solver's explanation of why the answer was `"unsat"`.
+#'
+#' Requires a solver created with `smt_solver(unsat_cores = TRUE)`: whether a
+#' proof is recorded is fixed when the solver is built, so it cannot be turned
+#' on after the fact.
+#'
+#' @param solver A solver from [smt_solver()], created with
+#'   `unsat_cores = TRUE`, on which [smt_check()] has returned `"unsat"`.
+#' @param named_only Whether to report only assertions named with
+#'   `(! ... :named n)`, which is what SMT-LIB means by an unsat core and what
+#'   the `(get-unsat-core)` command returns. `FALSE`, the default, reports the
+#'   core's assertions whether or not they were named -- an SMT-LIB-conformant
+#'   core of a script that names nothing is empty, which is rarely the answer
+#'   an R caller wants.
+#' @return A character vector of assertions in the solver's own printed form,
+#'   or of names when `named_only = TRUE`. If any assertion in the core was
+#'   named, the names come back as the vector's `names()`.
+#' @seealso [smt_solver()], [smt_check()]
+#' @export
+#' @examples
+#' s <- smt_solver("QF_LIA", unsat_cores = TRUE)
+#' smt_assert(s, "
+#'   (declare-const x Int)
+#'   (assert (! (> x 5) :named lower))
+#'   (assert (! (< x 3) :named upper))
+#'   (assert (! (= x 4) :named unrelated))
+#' ")
+#' smt_check(s)
+#' smt_unsat_core(s)
+#' smt_unsat_core(s, named_only = TRUE)
+smt_unsat_core <- function(solver, named_only = FALSE) {
+  check_solver(solver)
+  .Call(C_solver_unsat_core, solver$ptr, named_only)
 }
 
 #' The logics this package supports
