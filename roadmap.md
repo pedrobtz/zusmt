@@ -383,15 +383,16 @@ regression under `gctorture`.
   error paths and interrupts.
 - Regression corpus of small SMT-LIB files under `inst/` (keep the
   package tarball small).
-- **Re-enable the `sanitizers` leg** in
-  `.github/workflows/native-checks.yml`. It is parked, not dropped:
-  `r-actions`’ `sanitizers.yml` sets `CC`/`CXX` to clang but not
-  `CXX20`, so a C++20 package compiles with R’s configured g++ while
-  carrying clang-only link flags, and every compile probe fails. Waiting
-  on `CXX17`/`CXX20` (and their `*STD` variants) being set there. UBSan
-  covers ground valgrind does not — signed overflow, misaligned
-  pointers, invalid casts — and this package has already shipped one
-  memory bug to review, so it is worth having back.
+- ~~**Re-enable the `sanitizers` leg**~~ — **done**, by the trial in PR
+  \#10. It was parked because `r-actions`’ `sanitizers.yml` set
+  `CC`/`CXX` to clang but not `CXX20`, so a C++20 package compiled with
+  R’s configured g++ while carrying clang-only link flags. Fixed
+  upstream, and then the same mistake turned up twice more in the
+  container job (r-actions#40, \#41): flags appended to `CXXFLAGS` never
+  reach a package that declares a standard. UBSan covers ground valgrind
+  does not — signed overflow, misaligned pointers, invalid casts — and
+  this package has already shipped one memory bug to review, so it is
+  worth having back.
 - `valgrind`, `gctorture`, `rchk` and `lto` already run via
   `native-checks.yml` (adopted in Stage 6).
 - Guard check time: keep examples and tests fast; CRAN’s limit is the
@@ -431,8 +432,9 @@ errors on precisely that flavour.
 
 Exit: **met** — 117 tests; `valgrind`, `gctorture`, `rchk` and `lto`
 green in CI; coverage reporting both R and native. The `sanitizers` leg
-remains parked on the `r-actions` `CXX20` fix, which is the one part of
-this stage that cannot be finished from this repository.
+was parked on the `r-actions` `CXX20` fix — the one part of this stage
+that could not be finished from this repository — and PR \#10 unparked
+it.
 
 ## Stage 8 — Documentation — **done** (PR \#7)
 
@@ -494,16 +496,22 @@ What the `cran-extrachecks` pass changed:
 - `print.zusmt_solver` had `@export` and no documentation;
   `cran-comments.md` needed build-ignoring.
 
-**Still open before an actual submission**, and neither is fixable from
-this repository:
+**Both CI gaps are now closed** — they were the two jobs neither fixable
+from this repository nor safe to drop, and PR \#10 resolved them by
+fixing `r-actions` and proving it end to end:
 
-1.  `sanitizers` — parked on `r-actions` setting `CXX17`/`CXX20` and
-    their `*FLAGS`. Worth resolving before submitting: UBSan is the
-    check most likely to find what valgrind and rchk do not, on a
-    package that has already shipped one memory bug.
-2.  `nosuggests` — parked on `--no-build-vignettes` in that job’s
-    `build_args`. CRAN runs this flavour itself, so the submission is
-    checked against it whether or not our CI is.
+1.  `sanitizers` — running. Needed `CXX17`/`CXX20` and their `*FLAGS`
+    upstream, then r-actions#40/#41 for the container job. The
+    `gcc-asan` image also adds `-fsanitize=bounds-strict`, which is
+    outside the `undefined` group CRAN runs and instruments the
+    `T data[0]` idiom MiniSat allocates clauses with;
+    `native-checks.yml` passes
+    `gcc-ubsan-flags: -fno-sanitize=bounds-strict` to restore CRAN’s
+    flavour, and the comment there carries the measurements.
+2.  `nosuggests` — running. Needed `--no-build-vignettes` in
+    `build_args` *and* `--ignore-vignettes` in the check args: without
+    the second, a package declaring `VignetteBuilder` fails on the
+    `inst/doc` that the first deliberately did not build.
 
 ## Stage 10 — A term-building API — **deferred past 0.1.0**
 

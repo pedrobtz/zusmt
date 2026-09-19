@@ -237,6 +237,14 @@ before pushing.
 `roadmap.md` records which r-actions workflows to adopt at which stage;
 do not add them early.
 
+**Re-running a workflow does not re-resolve `@v1`.** GitHub pins a
+reusable workflow to the SHA it resolved when the run was *created*, so
+`gh run rerun` re-executes the old copy even after the reference has
+moved. This cost a cycle in PR \#10: a fix was merged upstream, the
+re-run failed identically, and the log’s echoed script was the giveaway
+— it was the previous version. Push a commit (an empty one will do) to
+get a fresh run.
+
 Reading a CI build log: `rcmdcheck` prints the install log only on
 failure. The container legs upload a `check-<name>` artifact holding
 `zusmt.Rcheck/00install.out` (which contains `configure`’s output and

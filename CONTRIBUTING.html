@@ -74,7 +74,8 @@
 </div>
 <div class="section level2">
 <h2 id="ci">CI<a class="anchor" aria-label="anchor" href="#ci"></a></h2>
-<p><code>R-CMD-check</code> runs on the GitHub runners and in CRAN-like containers; <code>native-checks</code> runs valgrind, gctorture, rchk and LTO; <code>vendor</code> guards the bundled sources; <code>coverage</code> reports both R and native coverage. The <code>sanitizers</code> leg is parked pending a fix in <a href="https://github.com/pedrobtz/r-actions" class="external-link">r-actions</a> — see the comment in <code>.github/workflows/native-checks.yml</code>.</p>
+<p><code>R-CMD-check</code> runs on the GitHub runners and in CRAN-like containers, including the <code>nosuggests</code> and <code>nold</code> flavours; <code>native-checks</code> runs the sanitizers (ASan and UBSan, on both clang and GCC containers), valgrind, gctorture, rchk and LTO; <code>vendor</code> guards the bundled sources; <code>coverage</code> reports both R and native coverage.</p>
+<p>Two of those legs were parked for most of this package’s life on bugs in <a href="https://github.com/pedrobtz/r-actions" class="external-link">r-actions</a> and were unparked in PR #10. If you are adding a leg and it fails in a way that looks like the package, check first whether the flags reach the compile line at all: R compiles a package declaring a C++ standard with <code>$(CXXnn)</code> and <code>$(CXXnnFLAGS)</code>, so anything set only in <code>CXXFLAGS</code> is silently absent here.</p>
 </div>
 </div>
 
