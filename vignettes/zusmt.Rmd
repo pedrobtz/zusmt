@@ -71,6 +71,35 @@ there is nothing to report:
 smt_model(u)
 ```
 
+## Why there is no solution
+
+`"unsat"` on its own does not say which assertions are to blame. A solver created with
+`unsat_cores = TRUE` can report the subset that already conflicts, which is usually a small part of
+a large problem:
+
+```{r}
+conflict <- smt_solver("QF_LIA", unsat_cores = TRUE)
+smt_assert(conflict, "
+  (declare-const x Int)
+  (declare-const y Int)
+  (assert (! (> x 10) :named x-large))
+  (assert (! (< x 5)  :named x-small))
+  (assert (! (= y 1)  :named y-fixed))
+")
+smt_check(conflict)
+smt_unsat_core(conflict)
+```
+
+`y-fixed` is absent because it is not part of the contradiction -- that is the point of a core. Name
+assertions with `(! ... :named n)` and the names come back with them.
+
+The argument goes on `smt_solver()` rather than being set later because OpenSMT decides whether to
+record a proof when it builds the solver. Asking afterwards cannot work, and is refused:
+
+```{r, error = TRUE}
+smt_assert(smt_solver("QF_LIA"), "(set-option :produce-unsat-cores true)")
+```
+
 ## Exact values
 
 Solvers compute in rationals. Many rationals are not doubles, so a model value carries both: the

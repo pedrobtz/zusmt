@@ -2,8 +2,9 @@
 # see; these exist so the tests can exercise handle lifetime, error conversion
 # and interruption.
 
-solver_new <- function(logic = "QF_UF") {
-  .Call(C_solver_new, logic)
+solver_new <- function(logic = "QF_UF", unsat_cores = FALSE,
+                       interpolants = FALSE) {
+  .Call(C_solver_new, logic, unsat_cores, interpolants)
 }
 
 solver_assert_var <- function(solver, name, negated = FALSE) {

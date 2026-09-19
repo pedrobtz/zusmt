@@ -4,15 +4,29 @@
 \alias{smt_solver}
 \title{Create a solver}
 \usage{
-smt_solver(logic = "QF_UF")
+smt_solver(logic = "QF_UF", unsat_cores = FALSE, interpolants = FALSE)
 }
 \arguments{
 \item{logic}{An SMT-LIB logic name; \code{\link[=smt_logics]{smt_logics()}} returns the ones this
 package supports. They cover uninterpreted functions, linear integer and
 real arithmetic, their combinations, difference logic and arrays.}
+
+\item{unsat_cores}{Whether to record enough of the search to report an
+unsat core with \code{\link[=smt_unsat_core]{smt_unsat_core()}}. Costs time and memory on every solve,
+so it is off by default.}
+
+\item{interpolants}{Whether to enable Craig interpolation, after which
+\verb{(get-interpolants ...)} can be sent with \code{\link[=smt_assert]{smt_assert()}}. There is no
+dedicated R function for it yet; the output is printed rather than
+returned.}
 }
 \value{
 A solver handle, to be passed to the other \verb{smt_*()} functions.
+
+\code{unsat_cores} and \code{interpolants} are arguments here, rather than options
+to set later with \code{\link[=smt_assert]{smt_assert()}}, because the solver decides whether to
+record a proof when it is built. Setting them afterwards cannot work, and
+the solver rejects the attempt.
 }
 \description{
 Creates a solver for one of the SMT-LIB logics, ready to be given assertions
@@ -25,5 +39,5 @@ smt_assert(s, "(declare-const x Int) (assert (> x 3))")
 smt_check(s)
 }
 \seealso{
-\code{\link[=smt_assert]{smt_assert()}}, \code{\link[=smt_check]{smt_check()}}, \code{\link[=smt_model]{smt_model()}}
+\code{\link[=smt_assert]{smt_assert()}}, \code{\link[=smt_check]{smt_check()}}, \code{\link[=smt_model]{smt_model()}}, \code{\link[=smt_unsat_core]{smt_unsat_core()}}
 }
