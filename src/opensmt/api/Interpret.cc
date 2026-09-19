@@ -1045,6 +1045,7 @@ void Interpret::comment_formatted(const char* fmt_str, ...) const {
 
 
 void Interpret::notify_formatted(bool error, const char* fmt_str, ...) const {
+    if (error) zusmt::note_error();  /* zusmt: see r_compat.h */
     va_list ap;
     int d;
     char c1, *t;

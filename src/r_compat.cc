@@ -16,6 +16,11 @@ namespace {
 
 // Line-buffered: Rprintf on every character would be slow and would interleave
 // badly with R's own output. Buffered text is flushed on newline and on sync.
+bool & error_flag() {
+    static bool reported = false;
+    return reported;
+}
+
 bool & capturing() {
     static bool on = false;
     return on;
@@ -234,4 +239,16 @@ std::string zusmt::end_capture() {
     std::string out = capture_buffer();
     capture_buffer().clear();
     return out;
+}
+
+void zusmt::note_error() {
+    error_flag() = true;
+}
+
+void zusmt::clear_error() {
+    error_flag() = false;
+}
+
+bool zusmt::error_was_reported() {
+    return error_flag();
 }

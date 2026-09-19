@@ -25,6 +25,16 @@ edit() { # file, sed-expression
   mv "${_f}.patched" "${_f}"
 }
 
+patch_exact() { # file, sed-expression, description
+  _f="${vendor}/$1"
+  [ -f "${_f}" ] || { echo "ERROR: $1 not found" >&2; exit 1; }
+  before=$(shasum -a 256 "${_f}" | cut -d' ' -f1)
+  edit "${_f}" "$2"
+  after=$(shasum -a 256 "${_f}" | cut -d' ' -f1)
+  [ "${before}" != "${after}" ] || { echo "ERROR: no-op patch: $1 ($3)" >&2; exit 1; }
+  echo "      $1: $3"
+}
+
 # Apply an expression across every file matching a grep pattern, and report
 # how many files changed. rule <name> <grep-ere> <sed-ere>
 rule() {
@@ -61,6 +71,15 @@ rule 'printf -> Rprintf' '(^|[^_[:alnum:]])printf[[:space:]]*\(' \
 rule 'fprintf(stderr -> REprintf' 'fprintf[[:space:]]*\([[:space:]]*stderr[[:space:]]*,' \
   's/fprintf[[:space:]]*([[:space:]]*stderr[[:space:]]*,[[:space:]]*/REprintf(/g'
 
+#    And let the solver say when it is reporting an error, rather than having
+#    the R layer search the transcript for "(error". Interpret already
+#    distinguishes the two cases with its `error` argument; a successful
+#    (echo "(error ...)") does not, and would otherwise be rejected as a
+#    failure.
+patch_exact api/Interpret.cc \
+  's|^void Interpret::notify_formatted(bool error, const char\* fmt_str, ...) const {|void Interpret::notify_formatted(bool error, const char* fmt_str, ...) const {\n    if (error) zusmt::note_error();  /* zusmt: see r_compat.h */|' \
+  'notify_formatted(): record that an error was reported'
+
 # 3. The system RNG. Both call sites are heuristic tie-breaks in interpolation
 #    and proof transformation, not anything a user seeds.
 rule 'rand -> zusmt::pseudo_rand' '(^|[^_[:alnum:]])rand[[:space:]]*\(\)' \
@@ -72,15 +91,6 @@ rule 'srand -> zusmt::pseudo_srand' '(^|[^_[:alnum:]])srand[[:space:]]*\(' \
 #    because Interpret has a *method* named exit(), and rewriting that would
 #    not compile.
 echo "    exit()/abort() -> zusmt::fatal(), per call site:"
-patch_exact() { # file, sed-expression, description
-  _f="${vendor}/$1"
-  [ -f "${_f}" ] || { echo "ERROR: $1 not found" >&2; exit 1; }
-  before=$(shasum -a 256 "${_f}" | cut -d' ' -f1)
-  edit "${_f}" "$2"
-  after=$(shasum -a 256 "${_f}" | cut -d' ' -f1)
-  [ "${before}" != "${after}" ] || { echo "ERROR: no-op patch: $1 ($3)" >&2; exit 1; }
-  echo "      $1: $3"
-}
 patch_exact tsolvers/lasolver/Simplex.cc \
   's/^[[:space:]]*exit(1);/    zusmt::fatal("bundled solver: inconsistent bound in Simplex::overBound");/' \
   'exit(1) after an assertion'

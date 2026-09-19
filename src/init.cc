@@ -11,6 +11,7 @@ extern "C" SEXP C_solver_check(SEXP xp);
 extern "C" SEXP C_supported_logics(void);
 extern "C" SEXP C_solver_run(SEXP xp, SEXP text);
 extern "C" SEXP C_solver_model(SEXP xp);
+extern "C" SEXP C_solver_is_live(SEXP xp);
 extern "C" SEXP C_solver_release(SEXP xp);
 extern "C" SEXP C_solver_assert_pigeonhole(SEXP xp, SEXP holes);
 extern "C" SEXP C_arm_test_interrupt(SEXP polls);
@@ -26,6 +27,7 @@ static R_CallMethodDef const CallEntries[] = {
     {"C_supported_logics", (DL_FUNC) &C_supported_logics, 0},
     {"C_solver_run", (DL_FUNC) &C_solver_run, 2},
     {"C_solver_model", (DL_FUNC) &C_solver_model, 1},
+    {"C_solver_is_live", (DL_FUNC) &C_solver_is_live, 1},
     {"C_solver_release", (DL_FUNC) &C_solver_release, 1},
     {"C_solver_assert_pigeonhole", (DL_FUNC) &C_solver_assert_pigeonhole, 2},
     {"C_arm_test_interrupt", (DL_FUNC) &C_arm_test_interrupt, 1},
