@@ -177,7 +177,53 @@ int & test_interrupt_countdown() {
     return countdown;
 }
 
+// The deadline for the current solve, if any. Function-local statics rather
+// than namespace-scope objects: a class- or namespace-scope thread_local of
+// non-trivial type does not link on mingw, and these follow the same shape as
+// the interrupt state above for consistency.
+struct Deadline {
+    std::chrono::steady_clock::time_point at{};
+    bool armed = false;
+    bool reached = false;
+};
+
+Deadline & deadline_state() {
+    static Deadline state;
+    return state;
+}
+
 }  // namespace
+
+void zusmt::set_deadline(double seconds) {
+    Deadline & state = deadline_state();
+    state.at = std::chrono::steady_clock::now() +
+               std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                   std::chrono::duration<double>(seconds));
+    state.armed = true;
+    state.reached = false;
+}
+
+void zusmt::clear_deadline() {
+    Deadline & state = deadline_state();
+    state.armed = false;
+    state.reached = false;
+}
+
+bool zusmt::deadline_reached() {
+    Deadline & state = deadline_state();
+    if (!state.armed || state.reached) return state.reached;
+    // Latched on first expiry: okContinue() is called many times after the
+    // search begins to unwind, and a caller asking afterwards must get the
+    // same answer the search acted on.
+    if (std::chrono::steady_clock::now() >= state.at) { state.reached = true; }
+    return state.reached;
+}
+
+bool zusmt::should_stop() {
+    // Deadline first: it is a clock read against a bool that is usually
+    // false, where the interrupt poll costs an R context even when throttled.
+    return deadline_reached() || interrupt_requested();
+}
 
 bool zusmt::interrupt_requested() {
     // Throttled: R_ToplevelExec sets up and tears down a context, and

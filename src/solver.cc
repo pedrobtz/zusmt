@@ -238,15 +238,49 @@ extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated) {
     });
 }
 
-extern "C" SEXP C_solver_check(SEXP xp) {
+extern "C" SEXP C_solver_check(SEXP xp, SEXP timeout) {
     return zusmt::with_firewall([&]() -> SEXP {
         SolverHandle * handle = handle_from(xp);
+
+        if (TYPEOF(timeout) != REALSXP || Rf_length(timeout) != 1) {
+            throw std::invalid_argument("`timeout` must be a single number");
+        }
+        // ISNAN, not ISNA: NA_real_ and NaN are both unusable here, and
+        // ISNA() is true only of the first. `seconds <= 0` is false for NaN,
+        // so an unchecked NaN would arm a deadline that never expires.
+        double const seconds = REAL(timeout)[0];
+        if (ISNAN(seconds) || seconds <= 0) {
+            throw std::invalid_argument(
+                "`timeout` must be a positive number of seconds, or Inf for no limit");
+        }
+
+        // Cleared on the way out whatever happens: a deadline left armed
+        // would silently bound the *next* solve on this handle, and an
+        // exception out of check() must not leave that behind.
+        struct DeadlineScope {
+            explicit DeadlineScope(double seconds) {
+                if (R_FINITE(seconds)) zusmt::set_deadline(seconds);
+            }
+            ~DeadlineScope() { zusmt::clear_deadline(); }
+        } const deadline{seconds};
 
         zusmt::clear_interrupt_request();
         opensmt::sstat const status = handle->interp->getMainSolver().check();
 
         char const * result = "error";
-        if (zusmt::interrupt_was_requested()) {
+        if (status == opensmt::s_Undef && zusmt::deadline_reached()) {
+            // Both halves matter. The clock alone is not enough: the deadline
+            // can expire between the last okContinue() and the solver
+            // finishing, and a decided answer is valid however late it is --
+            // reporting "unknown" there would throw away a correct sat or
+            // unsat. An undecided status alone is not enough either, because
+            // a solver may legitimately return s_Undef without any deadline.
+            //
+            // Before the interrupt branch: should_stop() checks the deadline
+            // first, so when both fired the deadline is what ended the
+            // search, and reporting the interrupt would name the wrong cause.
+            result = "timeout";
+        } else if (zusmt::interrupt_was_requested()) {
             // The search stopped early because a poll saw a pending
             // interrupt. Report it; solver_check() in R is what raises it,
             // because the poll that detected it also consumed R's pending

@@ -4,13 +4,26 @@
 \alias{smt_check}
 \title{Check satisfiability}
 \usage{
-smt_check(solver)
+smt_check(solver, timeout = Inf)
 }
 \arguments{
 \item{solver}{A solver from \code{\link[=smt_solver]{smt_solver()}}.}
+
+\item{timeout}{Seconds to allow the search, or \code{Inf} for no limit. On
+expiry the result is \code{"unknown"} and a warning of class \code{zusmt_timeout}
+is signalled.
+
+The bound is honoured where the solver checks whether to keep searching,
+which is its SAT loop, so a solve can overrun it while inside
+preprocessing or a single long theory propagation. Treat it as a floor on
+when the call returns rather than a hard guarantee.}
 }
 \value{
 \code{"sat"}, \code{"unsat"} or \code{"unknown"}.
+
+A timeout reports \code{"unknown"}, since a solve that ran out of time has not
+decided anything -- the warning is what distinguishes it from a solver
+that gave up on its own.
 
 A long search can be interrupted. Because the poll that notices a pending
 interrupt also consumes it, the interrupt is re-signalled from R as a
@@ -24,4 +37,7 @@ Check satisfiability
 s <- smt_solver("QF_LIA")
 smt_assert(s, "(declare-const x Int) (assert (> x 0)) (assert (< x 0))")
 smt_check(s)
+
+# A bounded solve on a problem that is hard rather than large.
+smt_check(s, timeout = 10)
 }
