@@ -163,12 +163,42 @@ the solver. Asking afterwards cannot work, and is refused:</p>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> (error "set-option failed for :produce-unsat-cores: Option cannot be changed at this point")</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="summarising-a-conflict">Summarising a conflict<a class="anchor" aria-label="anchor" href="#summarising-a-conflict"></a>
+</h2>
+<p>An unsat core says <em>which</em> assertions conflict. An interpolant
+says <em>what</em> the conflict is, in the vocabulary the two sides
+share.</p>
+<p>Split the assertions into a group <code>A</code> and everything else.
+A Craig interpolant follows from <code>A</code>, contradicts the rest,
+and mentions only symbols both sides use:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span>, interpolants <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">i</span>, <span class="st">"</span></span>
+<span><span class="st">  (declare-const x Int)</span></span>
+<span><span class="st">  (declare-const y Int)</span></span>
+<span><span class="st">  (declare-const z Int)</span></span>
+<span><span class="st">  (assert (! (and (&gt; x 5) (= y x)) :named A))</span></span>
+<span><span class="st">  (assert (! (and (&lt; z 3) (= z y)) :named B))</span></span>
+<span><span class="st">"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">i</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "unsat"</span></span>
+<span><span class="fu"><a href="../reference/smt_interpolant.html">smt_interpolant</a></span><span class="op">(</span><span class="va">i</span>, <span class="st">"A"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "(&lt;= 6 y)"</span></span></code></pre></div>
+<p><code>A</code> forces <code>y</code> to be at least 6 and the other
+group forces it below 3. The interpolant says just that, and says it
+about <code>y</code> alone – <code>x</code> belongs to <code>A</code>,
+<code>z</code> to the other side, and neither appears. That is the
+useful part: it explains the contradiction without either group’s
+private detail, which is what makes interpolants a building block for
+abstraction and invariant generation.</p>
+</div>
+<div class="section level2">
 <h2 id="exact-values">Exact values<a class="anchor" aria-label="anchor" href="#exact-values"></a>
 </h2>
 <p>Solvers compute in rationals. Many rationals are not doubles, so a
 model value carries both: the <code>numeric</code> you can compute with,
 and the solver’s exact answer as an attribute.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">third</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LRA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">third</span>, <span class="st">"(declare-const v Real) (assert (= (* 3.0 v) 1.0))"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">third</span><span class="op">)</span></span>
@@ -190,7 +220,7 @@ matters if you feed the answer back into another constraint.</p>
 <p>Uninterpreted functions let you state that something <em>is a
 function</em> — equal inputs give equal outputs — without saying which
 function. That alone is enough to make some problems unsatisfiable:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">uf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_UF"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">uf</span>, <span class="st">"</span></span>
 <span><span class="st">  (declare-sort U 0)</span></span>
@@ -208,7 +238,7 @@ function. That alone is enough to make some problems unsatisfiable:</p>
 <p>Arrays work similarly, with <code>select</code> and
 <code>store</code> and the rule that reading back what you just wrote
 gives what you wrote:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ax</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_AX"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">ax</span>, <span class="st">"</span></span>
 <span><span class="st">  (declare-sort I 0)</span></span>
@@ -228,7 +258,7 @@ gives what you wrote:</p>
 <p>Assertions accumulate, so a problem can be built across several calls
 — and <code>push</code>/<code>pop</code> let you explore an assumption
 and then discard it.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">k</span>, <span class="st">"(declare-const n Int) (assert (&gt; n 10))"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">k</span><span class="op">)</span></span>
@@ -248,7 +278,7 @@ unchanged.</p>
 <div class="section level2">
 <h2 id="which-logic-to-ask-for">Which logic to ask for<a class="anchor" aria-label="anchor" href="#which-logic-to-ask-for"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/smt_logics.html">smt_logics</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "QF_UF"    "QF_LIA"   "QF_LRA"   "QF_UFLIA" "QF_UFLRA" "QF_IDL"   "QF_RDL"  </span></span>
 <span><span class="co">#&gt; [8] "QF_AX"</span></span></code></pre></div>
@@ -265,7 +295,7 @@ arithmetic.</p>
 </h2>
 <p>Mistakes in the input become R conditions rather than printed output,
 so they can be caught:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">bad</span>, <span class="st">"(assert (&gt; undeclared 1))"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `smt_assert()`:</span></span></span>
@@ -279,7 +309,7 @@ so they can be caught:</p>
 <p>Satisfiability is decidable for these logics but not cheap: a problem
 a few lines long can take minutes, and the bundled solver has no time
 limit of its own. <code><a href="../reference/smt_check.html">smt_check()</a></code> takes one.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">s</span>, <span class="st">"(declare-const x Int) (assert (&gt; x 3))"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">s</span>, timeout <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
@@ -288,7 +318,7 @@ limit of its own. <code><a href="../reference/smt_check.html">smt_check()</a></c
 not decided anything – and warns, so a bounded solve is never silently
 mistaken for a solver that gave up on its own. Catch the warning by its
 class if you want to handle the two differently:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/smt_check.html">smt_check</a></span><span class="op">(</span><span class="va">s</span>, timeout <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  zusmt_timeout <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">cond</span><span class="op">)</span> <span class="op">{</span></span>
@@ -307,7 +337,7 @@ long step. Pressing <code>Ctrl-C</code> works at the same points.</p>
 <p>A solver holds memory in the bundled C++ library, freed when R
 garbage-collects the handle. To release it at a known point — a long
 loop, a large problem — use <code><a href="../reference/smt_release.html">smt_release()</a></code>.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/smt_release.html">smt_release</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

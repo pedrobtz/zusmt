@@ -14,6 +14,8 @@ Create a solver, give it a problem in SMT-LIB2, and ask for an answer.
   : The model of a satisfiable problem
 - [`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
   : The unsat core of an unsatisfiable problem
+- [`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
+  : A Craig interpolant between two groups of assertions
 - [`print(`*`<zusmt_solver>`*`)`](https://pedrobtz.github.io/zusmt/reference/print.zusmt_solver.md)
   : Print a solver
 

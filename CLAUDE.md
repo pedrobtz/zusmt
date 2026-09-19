@@ -20,7 +20,8 @@ are done: the package has a working public API.
 [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md),
 [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md),
 [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md),
-[`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
+[`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md),
+[`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
 and
 [`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md)
 take SMT-LIB2 text and return R values. Stage 7 (sanitizers, valgrind,
