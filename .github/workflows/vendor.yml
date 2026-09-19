@@ -16,6 +16,6 @@ permissions: read-all
 
 jobs:
   vendor:
-    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@v1
+    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@main
     with:
       vendor-dir: src/opensmt

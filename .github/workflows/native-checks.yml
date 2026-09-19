@@ -15,50 +15,32 @@ name: native-checks
 permissions: read-all
 
 jobs:
-  # sanitizers is disabled pending a fix in r-actions, not because this
-  # package cannot pass it.
+  # TRIAL: re-enabled against r-actions@main, which now sets the
+  # standard-specific compiler variables this package needed --
   #
-  # sanitizers.yml writes CC/CXX = clang into ~/.R/Makevars along with
-  # LDFLAGS = -fsanitize=undefined -shared-libsan. It does not set CXX20, so
-  # a C++20 package is compiled by R's configured g++ while carrying a
-  # clang-only link flag, and every compile probe dies on
+  #   CXX11/CXX14/CXX17/CXX20 = clang++   plus their *FLAGS
   #
-  #   g++: error: unrecognized command-line option '-shared-libsan'
-  #
-  # Here that surfaces as configure reporting GMP missing on a runner where
-  # GMP is installed. zusmt is the first package in the set with C++ and a
-  # configure probe, which is why it is the first to hit it.
-  #
-  # TO RE-ENABLE: uncomment the block below, once r-actions' sanitizers.yml
-  # sets the standard-specific compiler variables next to CC/CXX --
-  #
-  #   CXX17 = clang++   CXX17STD = -std=gnu++17
-  #   CXX20 = clang++   CXX20STD = -std=gnu++20
-  #
-  # -- so that a C++20 package is compiled by the same clang whose link flags
-  # are in ~/.R/Makevars. Nothing in this repository can fix it.
-  #
-  # This is worth coming back for rather than quietly dropping: UBSan covers
-  # ground valgrind does not -- signed overflow, misaligned pointers, invalid
-  # casts -- and this is the package that shipped an unprotected-SEXP bug to
-  # review. Tracked as a Stage 7 item in roadmap.md.
-  #
-  # sanitizers:
-  #   uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
-  #   with:
-  #     asan: true
+  # Note the divergence from what the disabled-block below asked for:
+  # r-actions sets CXXnnFLAGS but deliberately leaves CXXnnSTD alone, on the
+  # reasoning that Makeconf's own -std=gnu++nn suits clang++. This leg is the
+  # test of that reasoning. If configure again reports GMP missing on a runner
+  # where GMP is installed, CXXnnSTD is why.
+  sanitizers:
+    uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@main
+    with:
+      asan: true
 
   valgrind:
-    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@v1
+    uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@main
     with:
       # The suite solves a pigeonhole instance, and valgrind is ~20-50x.
       timeout-minutes: 90
 
   lto:
-    uses: pedrobtz/r-actions/.github/workflows/lto.yml@v1
+    uses: pedrobtz/r-actions/.github/workflows/lto.yml@main
 
   gctorture:
-    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@v1
+    uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@main
 
   rchk:
-    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@v1
+    uses: pedrobtz/r-actions/.github/workflows/rchk.yml@main
