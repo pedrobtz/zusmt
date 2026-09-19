@@ -71,6 +71,16 @@ expired clock does **not** mean the search was stopped –
 undecided, because a deadline can expire just before the solver finishes
 and a decided answer is valid however late it is.
 
+Strings crossing the boundary carry a **declared** encoding, not the
+session’s. SMT-LIB quoted symbols may be non-ASCII (`|naïve|` is legal
+and reaches the model, the core and the interpolant), so `src/solver.cc`
+reads arguments with `Rf_translateCharUTF8()` and builds results with
+`Rf_mkCharCE(..., CE_UTF8)` via the `utf8_arg()`/`utf8_string()`
+helpers. Plain `CHAR()` and `Rf_mkChar()` round-trip correctly on a
+UTF-8 session by coincidence and misdecode elsewhere. The exceptions
+still using the native forms are ASCII by construction – the logic name,
+which is matched against `kSupportedLogics`, and that array itself.
+
 ## Adding a regression case
 
 Drop a `.smt2` file in `inst/smt2/` with two header comments;

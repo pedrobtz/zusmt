@@ -4,6 +4,11 @@
 
 - First release.
 
+- Strings crossing to and from the solver now declare UTF-8 rather than
+  inheriting the session’s encoding. SMT-LIB quoted symbols may be
+  non-ASCII, and `|naïve|` previously came back marked native – correct
+  on a UTF-8 session and misdecoded on any other.
+
 - New
   [`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
   returns a Craig interpolant between two groups of named assertions, as
