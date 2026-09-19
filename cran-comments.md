@@ -8,9 +8,9 @@ First submission of zusmt.
 
 ```
 * checking installed package size ... NOTE
-  installed size is 44.9Mb
+  installed size is 56.1Mb
     sub-directories of 1Mb or more:
-      libs  44.8Mb
+      libs  55.9Mb
 ```
 
 The package bundles the OpenSMT satisfiability modulo theories solver (87
@@ -19,8 +19,11 @@ so that solving does not require a separately installed solver binary. The
 size is almost entirely the compiled solver in `libs/`, and there is no
 subset of it that could be dropped while leaving a working solver.
 
-The figure above is what the check reports on the Linux builders; the same
-sources install at about 2.4Mb on macOS.
+**The source package is 0.5Mb.** The size above is compiled output, and it
+varies by more than an order of magnitude with the toolchain: the same
+sources install at 2.5Mb on macOS, and the r-devel clang container reports no
+size note at all. The figure quoted is the largest we measure, from the Linux
+release builder.
 
 ## Bundled third-party sources
 
