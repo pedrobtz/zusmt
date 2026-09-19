@@ -253,6 +253,43 @@ smt_assert(bad, "(assert (> undeclared 1))")
 #> (error "assertion returns an unknown sort")
 ```
 
+## Bounding a solve
+
+Satisfiability is decidable for these logics but not cheap: a problem a
+few lines long can take minutes, and the bundled solver has no time
+limit of its own.
+[`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md)
+takes one.
+
+``` r
+
+s <- smt_solver("QF_LIA")
+smt_assert(s, "(declare-const x Int) (assert (> x 3))")
+smt_check(s, timeout = 30)
+#> [1] "sat"
+```
+
+A solve that runs out of time reports `"unknown"` – it has not decided
+anything – and warns, so a bounded solve is never silently mistaken for
+a solver that gave up on its own. Catch the warning by its class if you
+want to handle the two differently:
+
+``` r
+
+withCallingHandlers(
+  smt_check(s, timeout = 5),
+  zusmt_timeout = function(cond) {
+    message("giving up on this one")
+    invokeRestart("muffleWarning")
+  }
+)
+```
+
+The bound is checked where the solver decides whether to keep searching,
+so treat it as a floor on when the call returns rather than a hard
+guarantee: a solve can overrun it inside preprocessing or a single long
+step. Pressing `Ctrl-C` works at the same points.
+
 ## Releasing a solver
 
 A solver holds memory in the bundled C++ library, freed when R

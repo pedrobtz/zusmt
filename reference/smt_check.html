@@ -40,7 +40,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">smt_check</span><span class="op">(</span><span class="va">solver</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">smt_check</span><span class="op">(</span><span class="va">solver</span>, timeout <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -50,10 +50,23 @@
 <dl><dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>A solver from <code><a href="smt_solver.html">smt_solver()</a></code>.</p></dd>
 
+
+<dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
+<dd><p>Seconds to allow the search, or <code>Inf</code> for no limit. On
+expiry the result is <code>"unknown"</code> and a warning of class <code>zusmt_timeout</code>
+is signalled.</p>
+<p>The bound is honoured where the solver checks whether to keep searching,
+which is its SAT loop, so a solve can overrun it while inside
+preprocessing or a single long theory propagation. Treat it as a floor on
+when the call returns rather than a hard guarantee.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>"sat"</code>, <code>"unsat"</code> or <code>"unknown"</code>.</p>
+<p>A timeout reports <code>"unknown"</code>, since a solve that ran out of time has not
+decided anything – the warning is what distinguishes it from a solver
+that gave up on its own.</p>
 <p>A long search can be interrupted. Because the poll that notices a pending
 interrupt also consumes it, the interrupt is re-signalled from R as a
 condition inheriting from <code>interrupt</code>, so <code>tryCatch(interrupt = )</code> works;
@@ -65,6 +78,10 @@ with no handler it becomes an error rather than returning a value.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="smt_solver.html">smt_solver</a></span><span class="op">(</span><span class="st">"QF_LIA"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="smt_assert.html">smt_assert</a></span><span class="op">(</span><span class="va">s</span>, <span class="st">"(declare-const x Int) (assert (&gt; x 0)) (assert (&lt; x 0))"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">smt_check</span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "unsat"</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># A bounded solve on a problem that is hard rather than large.</span></span></span>
+<span class="r-in"><span><span class="fu">smt_check</span><span class="op">(</span><span class="va">s</span>, timeout <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "unsat"</span>
 </code></pre></div>
     </div>

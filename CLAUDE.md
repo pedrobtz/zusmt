@@ -57,6 +57,19 @@ work and are easy to break:
   rule routes the parser’s own syntax errors through `zusmt::rerr()`
   instead.
 
+Stopping a solve – by interrupt or by `smt_check(timeout =)` – goes
+through the solver’s own `okContinue()`, patched to call
+`zusmt::should_stop()`. Nothing may stop a search by longjmp or by any
+asynchronous means: the search must unwind through its own destructors
+or it leaks the solver’s heap. Two consequences that are easy to get
+wrong. The bound only binds where `okContinue()` is called, so
+preprocessing and a single long theory propagation overrun it, and a
+problem decided in preprocessing never consults it at all. And an
+expired clock does **not** mean the search was stopped –
+`C_solver_check()` reports a timeout only when the status is also
+undecided, because a deadline can expire just before the solver finishes
+and a decided answer is valid however late it is.
+
 ## Adding a regression case
 
 Drop a `.smt2` file in `inst/smt2/` with two header comments;

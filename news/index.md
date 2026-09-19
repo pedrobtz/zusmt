@@ -4,6 +4,17 @@
 
 - First release.
 
+- [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md)
+  gains `timeout`, a bound in seconds on a single solve. OpenSMT has
+  none of its own – `:timeout` is not one of its options, so
+  `(set-option :timeout n)` is accepted and ignored – which left an
+  unbounded solve able to hang an R session until interrupted. The
+  deadline is checked where the interrupt poll already is, in the
+  solver’s own `okContinue()`, so an expired bound ends the search by
+  unwinding through its destructors. A timed-out solve returns
+  `"unknown"` and warns with class `zusmt_timeout`; a solve that reaches
+  an answer reports it however late.
+
 - Fixed a crash. `(set-option :produce-unsat-cores true)` on a live
   solver segfaulted the R session as soon as a core was requested:
   OpenSMT decides whether to record a proof when the SAT solver is
