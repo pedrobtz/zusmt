@@ -127,6 +127,7 @@ refused:
 smt_assert(smt_solver("QF_LIA"), "(set-option :produce-unsat-cores true)")
 #> Error in `smt_assert()`:
 #> ! (error "set-option failed for :produce-unsat-cores: Option cannot be changed at this point")
+#> in command 1 of 1 (set-option)
 ```
 
 ## Summarising a conflict
@@ -160,6 +161,13 @@ belongs to `A`, `z` to the other side, and neither appears. That is the
 useful part: it explains the contradiction without either group’s
 private detail, which is what makes interpolants a building block for
 abstraction and invariant generation.
+
+Interpolants are available for `QF_UF`, `QF_LIA` and `QF_LRA`, and only
+for some `QF_IDL` and `QF_RDL` problems. Enabling them also changes how
+integer problems are solved: OpenSMT stops deriving cuts from its
+proofs, which it cannot interpolate, so a `QF_LIA` problem that is
+decided instantly without `interpolants = TRUE` can run indefinitely
+with it. Give such checks a `timeout`.
 
 ## Exact values
 
@@ -232,7 +240,9 @@ smt_check(ax)
 ## Building up a problem
 
 Assertions accumulate, so a problem can be built across several calls —
-and `push`/`pop` let you explore an assumption and then discard it.
+and `push`/`pop` let you explore an assumption and then discard it. The
+assertions are discarded, that is; a constant declared after a `push`
+outlives the `pop`, which OpenSMT does not scope.
 
 ``` r
 
@@ -270,6 +280,23 @@ likely to be reported as an error than quietly accepted. `QF_IDL` and
 which covers scheduling and similar problems and is decided faster than
 general arithmetic.
 
+Difference logic means exactly that: every comparison must have the
+shape `(op (- x y) c)`, `(op x c)` or `(op x y)`. Anything else is
+refused, with an error of class `zusmt_unsupported_input`, rather than
+handed to a solver that cannot read it:
+
+``` r
+
+d <- smt_solver("QF_IDL")
+smt_assert(d, "(declare-const x Int) (declare-const y Int) (declare-const z Int)")
+smt_assert(d, "(assert (< (+ x y) z))")
+#> Error in `smt_assert()`:
+#> ! QF_IDL accepts only difference constraints -- comparisons of the form (op (- x y) c), (op x c) or (op x y) -- and this assertion contains (<= 0 (+ x y (* (- 1) z))), which is not one. The assertion was not added. Use QF_LIA for general linear arithmetic.
+#> in command 1 of 1 (assert)
+```
+
+Use `QF_LIA` or `QF_LRA` for general linear arithmetic.
+
 ## Errors
 
 Mistakes in the input become R conditions rather than printed output, so
@@ -281,9 +308,16 @@ bad <- smt_solver("QF_LIA")
 smt_assert(bad, "(assert (> undeclared 1))")
 #> Error in `smt_assert()`:
 #> ! (error "Unknown symbol `undeclared '")
-#> 
 #> (error "assertion returns an unknown sort")
+#> in command 1 of 1 (assert)
 ```
+
+A script runs one command at a time and stops at the first that fails.
+The commands before it have taken effect and the ones after it have not,
+and the error says which command it was. Every error the package raises
+inherits from `zusmt_error`, with a more specific class first – for
+instance `zusmt_smtlib_error` for a command the solver rejected – so a
+handler can tell them apart.
 
 ## Bounding a solve
 

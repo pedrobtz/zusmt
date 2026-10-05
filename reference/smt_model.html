@@ -49,12 +49,17 @@
 
 <dl><dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>A solver from <code><a href="smt_solver.html">smt_solver()</a></code>, on which <code><a href="smt_check.html">smt_check()</a></code> has just
-returned <code>"sat"</code>.</p></dd>
+returned <code>"sat"</code>. A model is refused, with an error of class
+<code>zusmt_stale_result</code>, once anything that can change the answer has been
+sent with <code><a href="smt_assert.html">smt_assert()</a></code> since – an assertion, <code>push</code> or <code>pop</code> – because
+it would describe a problem that no longer exists. Commands that only
+read, such as <code>(get-value ...)</code> or <code>(echo ...)</code>, and declarations do not
+affect it.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A named list, one element per 0-ary declaration. Booleans come back
+    <p>A named list, one element per 0-ary declaration, each name once. Booleans come back
 as logicals and numbers as doubles carrying an <code>"exact"</code> attribute with
 the solver's exact rational, since an SMT rational need not be
 representable as a double. Values of other sorts come back as the solver's

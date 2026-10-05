@@ -52,7 +52,9 @@ the solver's explanation of why the answer was <code>"unsat"</code>.</p>
 
 <dl><dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>A solver from <code><a href="smt_solver.html">smt_solver()</a></code>, created with
-<code>unsat_cores = TRUE</code>, on which <code><a href="smt_check.html">smt_check()</a></code> has returned <code>"unsat"</code>.</p></dd>
+<code>unsat_cores = TRUE</code>, on which <code><a href="smt_check.html">smt_check()</a></code> has returned <code>"unsat"</code> –
+and to which nothing has been asserted since: a core is refused with an
+error of class <code>zusmt_stale_result</code> once the assertions have changed.</p></dd>
 
 
 <dt id="arg-named-only">named_only<a class="anchor" aria-label="anchor" href="#arg-named-only"></a></dt>

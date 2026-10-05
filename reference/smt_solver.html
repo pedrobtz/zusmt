@@ -56,7 +56,14 @@ handle is released or garbage collected.</p>
 <dl><dt id="arg-logic">logic<a class="anchor" aria-label="anchor" href="#arg-logic"></a></dt>
 <dd><p>An SMT-LIB logic name; <code><a href="smt_logics.html">smt_logics()</a></code> returns the ones this
 package supports. They cover uninterpreted functions, linear integer and
-real arithmetic, their combinations, difference logic and arrays.</p></dd>
+real arithmetic, their combinations, difference logic and arrays.</p>
+<p>The difference logics, <code>QF_IDL</code> and <code>QF_RDL</code>, accept only comparisons of
+the form <code>(op (- x y) c)</code>, <code>(op x c)</code> or <code>(op x y)</code>, where <code>x</code> and <code>y</code>
+are constants and <code>c</code> a number, together with <code>distinct</code> and arithmetic
+<code>ite</code> terms that reduce to those. Any other arithmetic – a sum of two
+variables, a coefficient other than 1 – is refused by <code><a href="smt_assert.html">smt_assert()</a></code>
+with an error of class <code>zusmt_unsupported_input</code>; use <code>QF_LIA</code> or
+<code>QF_LRA</code> for it.</p></dd>
 
 
 <dt id="arg-unsat-cores">unsat_cores<a class="anchor" aria-label="anchor" href="#arg-unsat-cores"></a></dt>
@@ -66,10 +73,12 @@ so it is off by default.</p></dd>
 
 
 <dt id="arg-interpolants">interpolants<a class="anchor" aria-label="anchor" href="#arg-interpolants"></a></dt>
-<dd><p>Whether to enable Craig interpolation, after which
-<code>(get-interpolants ...)</code> can be sent with <code><a href="smt_assert.html">smt_assert()</a></code>. There is no
-dedicated R function for it yet; the output is printed rather than
-returned.</p></dd>
+<dd><p>Whether to enable Craig interpolation, for
+<code><a href="smt_interpolant.html">smt_interpolant()</a></code>.</p>
+<p>This changes how integer problems are solved, not only what is recorded:
+OpenSMT stops deriving cuts from its proofs, which it cannot interpolate,
+so a <code>QF_LIA</code> problem decided instantly without interpolation may not
+terminate with it. Pass a <code>timeout</code> to <code><a href="smt_check.html">smt_check()</a></code> on such solvers.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -79,10 +88,15 @@ returned.</p></dd>
 to set later with <code><a href="smt_assert.html">smt_assert()</a></code>, because the solver decides whether to
 record a proof when it is built. Setting them afterwards cannot work, and
 the solver rejects the attempt.</p>
+<p>Each solver holds memory in the bundled C++ library – on the order of
+100 KB even when empty – that R's garbage collector does not see, so a
+loop creating many solvers can accumulate far more than R's own memory
+use suggests. Call <code><a href="smt_release.html">smt_release()</a></code> on each one when it is done.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="smt_assert.html">smt_assert()</a></code>, <code><a href="smt_check.html">smt_check()</a></code>, <code><a href="smt_model.html">smt_model()</a></code>, <code><a href="smt_unsat_core.html">smt_unsat_core()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="smt_assert.html">smt_assert()</a></code>, <code><a href="smt_check.html">smt_check()</a></code>, <code><a href="smt_model.html">smt_model()</a></code>, <code><a href="smt_unsat_core.html">smt_unsat_core()</a></code>,
+<code><a href="smt_interpolant.html">smt_interpolant()</a></code></p></div>
     </div>
 
     <div class="section level2">

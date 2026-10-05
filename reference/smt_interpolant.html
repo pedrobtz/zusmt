@@ -64,7 +64,9 @@ terms neither side owns alone.</p>
 
 <dl><dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>A solver from <code><a href="smt_solver.html">smt_solver()</a></code>, created with
-<code>interpolants = TRUE</code>, on which <code><a href="smt_check.html">smt_check()</a></code> has returned <code>"unsat"</code>.</p></dd>
+<code>interpolants = TRUE</code>, on which <code><a href="smt_check.html">smt_check()</a></code> has returned <code>"unsat"</code> and
+to which nothing has been asserted since (otherwise an error of class
+<code>zusmt_stale_result</code>).</p></dd>
 
 
 <dt id="arg-a">a<a class="anchor" aria-label="anchor" href="#arg-a"></a></dt>
@@ -74,13 +76,19 @@ terms neither side owns alone.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A character vector of interpolants in the solver's printed form,
-usually of length one.</p>
+    <p>A character vector of interpolants as SMT-LIB terms, usually of
+length one. Negative and fractional numbers are written the SMT-LIB way,
+<code>(- 1)</code> and <code>(/ 16 5)</code>, so the result can be given to another solver.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Requires a solver created with <code>smt_solver(interpolants = TRUE)</code>, since
-whether a proof is recorded is fixed when the solver is built.</p>
+whether a proof is recorded is fixed when the solver is built. Enabling it
+can make <code>QF_LIA</code> checks much slower; see <code><a href="smt_solver.html">smt_solver()</a></code>.</p>
+<p>The bundled solver interpolates <code>QF_UF</code>, <code>QF_LIA</code> and <code>QF_LRA</code> problems,
+and only some <code>QF_IDL</code> and <code>QF_RDL</code> ones. For the other logics, and for the
+difference-logic problems it cannot handle, the result is an error of class
+<code>zusmt_unsupported_input</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

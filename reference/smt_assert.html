@@ -76,6 +76,36 @@ instance — is written to the console.</p>
     <p>Use <code><a href="smt_check.html">smt_check()</a></code> rather than a <code>(check-sat)</code> command: it returns the result
 to R instead of printing it.</p>
     </div>
+    <div class="section level2">
+    <h2 id="errors">Errors<a class="anchor" aria-label="anchor" href="#errors"></a></h2>
+
+
+<p>The commands in <code>text</code> run in order, and the first that fails stops the
+script: the commands before it have taken effect, the ones after it have
+not, and the error message names the failing command. Nothing is rolled
+back – in particular a declaration before the failure remains.</p>
+<p>Every error inherits from class <code>zusmt_error</code>, after a more specific one:</p><ul><li><p><code>zusmt_syntax_error</code>: the text does not parse. Nothing has run.</p></li>
+<li><p><code>zusmt_smtlib_error</code>: the solver rejected a command, such as an
+assertion using an undeclared name.</p></li>
+<li><p><code>zusmt_unsupported_input</code>: an assertion is outside what the solver's
+logic can decide – a non-difference constraint under <code>QF_IDL</code> or
+<code>QF_RDL</code>. The assertion is not added.</p></li>
+<li><p><code>zusmt_input_too_deep</code>: the text nests more than 10,000 levels of
+parentheses, which would overflow the C stack. Nothing has run.</p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="differences-from-smt-lib">Differences from SMT-LIB<a class="anchor" aria-label="anchor" href="#differences-from-smt-lib"></a></h2>
+
+
+<p>These come from the bundled solver, and are worth knowing when running a
+script written for another one.</p><ul><li><p><code>pop</code> discards assertions but not declarations: a constant declared
+after a <code>push</code> is still declared after the matching <code>pop</code>.</p></li>
+<li><p><code>(get-value ...)</code>, <code>(get-model)</code> and <code>(get-info ...)</code> print their answer
+rather than returning it; use <code><a href="smt_model.html">smt_model()</a></code> for values. Constants
+introduced with <code>define-fun</code> do not appear in <code><a href="smt_model.html">smt_model()</a></code>.</p></li>
+<li><p><code>(reset)</code> is not supported, nor are <code>(get-info :name)</code> and
+<code>(get-info :version)</code>, nor the <code>abs</code> and <code>to_real</code> functions.</p></li>
+</ul></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

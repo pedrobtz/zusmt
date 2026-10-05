@@ -22,6 +22,15 @@ smt_solver(logic = "QF_UF", unsat_cores = FALSE, interpolants = FALSE)
   functions, linear integer and real arithmetic, their combinations,
   difference logic and arrays.
 
+  The difference logics, `QF_IDL` and `QF_RDL`, accept only comparisons
+  of the form `(op (- x y) c)`, `(op x c)` or `(op x y)`, where `x` and
+  `y` are constants and `c` a number, together with `distinct` and
+  arithmetic `ite` terms that reduce to those. Any other arithmetic – a
+  sum of two variables, a coefficient other than 1 – is refused by
+  [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
+  with an error of class `zusmt_unsupported_input`; use `QF_LIA` or
+  `QF_LRA` for it.
+
 - unsat_cores:
 
   Whether to record enough of the search to report an unsat core with
@@ -30,11 +39,15 @@ smt_solver(logic = "QF_UF", unsat_cores = FALSE, interpolants = FALSE)
 
 - interpolants:
 
-  Whether to enable Craig interpolation, after which
-  `(get-interpolants ...)` can be sent with
-  [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md).
-  There is no dedicated R function for it yet; the output is printed
-  rather than returned.
+  Whether to enable Craig interpolation, for
+  [`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md).
+
+  This changes how integer problems are solved, not only what is
+  recorded: OpenSMT stops deriving cuts from its proofs, which it cannot
+  interpolate, so a `QF_LIA` problem decided instantly without
+  interpolation may not terminate with it. Pass a `timeout` to
+  [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md)
+  on such solvers.
 
 ## Value
 
@@ -46,12 +59,20 @@ to set later with
 because the solver decides whether to record a proof when it is built.
 Setting them afterwards cannot work, and the solver rejects the attempt.
 
+Each solver holds memory in the bundled C++ library – on the order of
+100 KB even when empty – that R's garbage collector does not see, so a
+loop creating many solvers can accumulate far more than R's own memory
+use suggests. Call
+[`smt_release()`](https://pedrobtz.github.io/zusmt/reference/smt_release.md)
+on each one when it is done.
+
 ## See also
 
 [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md),
 [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md),
 [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md),
-[`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
+[`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md),
+[`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
 
 ## Examples
 

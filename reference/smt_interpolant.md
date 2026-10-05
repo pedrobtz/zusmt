@@ -21,7 +21,8 @@ smt_interpolant(solver, a)
   [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md),
   created with `interpolants = TRUE`, on which
   [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md)
-  has returned `"unsat"`.
+  has returned `"unsat"` and to which nothing has been asserted since
+  (otherwise an error of class `zusmt_stale_result`).
 
 - a:
 
@@ -30,13 +31,21 @@ smt_interpolant(solver, a)
 
 ## Value
 
-A character vector of interpolants in the solver's printed form, usually
-of length one.
+A character vector of interpolants as SMT-LIB terms, usually of length
+one. Negative and fractional numbers are written the SMT-LIB way,
+`(- 1)` and `(/ 16 5)`, so the result can be given to another solver.
 
 ## Details
 
 Requires a solver created with `smt_solver(interpolants = TRUE)`, since
-whether a proof is recorded is fixed when the solver is built.
+whether a proof is recorded is fixed when the solver is built. Enabling
+it can make `QF_LIA` checks much slower; see
+[`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md).
+
+The bundled solver interpolates `QF_UF`, `QF_LIA` and `QF_LRA` problems,
+and only some `QF_IDL` and `QF_RDL` ones. For the other logics, and for
+the difference-logic problems it cannot handle, the result is an error
+of class `zusmt_unsupported_input`.
 
 ## See also
 

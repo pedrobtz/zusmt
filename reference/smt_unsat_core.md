@@ -17,7 +17,9 @@ smt_unsat_core(solver, named_only = FALSE)
   [`smt_solver()`](https://pedrobtz.github.io/zusmt/reference/smt_solver.md),
   created with `unsat_cores = TRUE`, on which
   [`smt_check()`](https://pedrobtz.github.io/zusmt/reference/smt_check.md)
-  has returned `"unsat"`.
+  has returned `"unsat"` – and to which nothing has been asserted since:
+  a core is refused with an error of class `zusmt_stale_result` once the
+  assertions have changed.
 
 - named_only:
 

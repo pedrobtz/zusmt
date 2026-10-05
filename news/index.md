@@ -5,6 +5,53 @@
 - First release. Problems are written in ‘SMT-LIB’ text; a term-building
   API is planned for a later version.
 
+- Fixed wrong answers under `QF_IDL` and `QF_RDL`. Their solver reads
+  every atom as a difference constraint, `x - y <= c`, and checked that
+  only with an `assert()` that R compiles out, so an ordinary linear
+  constraint such as `(< (+ x y) z)` was misread: “sat” with a model
+  violating the input, or “unsat” for a satisfiable problem. Such
+  assertions are now refused by
+  [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
+  with an error of class `zusmt_unsupported_input`, and a patch rule
+  makes the solver itself raise an error rather than misread one.
+
+- [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md),
+  [`smt_unsat_core()`](https://pedrobtz.github.io/zusmt/reference/smt_unsat_core.md)
+  and
+  [`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
+  now refuse, with class `zusmt_stale_result`, when the assertions have
+  changed since the last check. OpenSMT keeps the last status when
+  formulas are added, so a model for the previous problem used to be
+  returned for the new one.
+
+- A script passed to
+  [`smt_assert()`](https://pedrobtz.github.io/zusmt/reference/smt_assert.md)
+  now stops at the first failing command, and the error names it.
+  Upstream carried on past an error, so commands after the failing one
+  had already been applied when the error was caught.
+
+- Every error the package raises now inherits from `zusmt_error`, with a
+  more specific class first (`zusmt_syntax_error`, `zusmt_smtlib_error`,
+  `zusmt_unsupported_input`, `zusmt_input_too_deep`,
+  `zusmt_stale_result`).
+
+- Input nested more than 10,000 levels deep is refused before parsing.
+  Deeper input overflowed the C stack in the solver’s term builder.
+
+- Lexer errors, such as an illegal character, now carry their diagnostic
+  in the condition instead of printing it and raising “SMT-LIB syntax
+  error”.
+
+- [`smt_interpolant()`](https://pedrobtz.github.io/zusmt/reference/smt_interpolant.md)
+  returns standard SMT-LIB numerals, `(- 1)` and `(/ 16 5)`, rather than
+  OpenSMT’s `-1` and `16/5`, and raises one classed error for logics and
+  problems the solver cannot interpolate. The documentation now says
+  which those are, and that `interpolants = TRUE` can stop `QF_LIA`
+  checks from terminating without a `timeout`.
+
+- A constant declared twice appears once in
+  [`smt_model()`](https://pedrobtz.github.io/zusmt/reference/smt_model.md).
+
 - Strings crossing to and from the solver now declare UTF-8 rather than
   inheriting the session’s encoding. SMT-LIB quoted symbols may be
   non-ASCII, and `|naïve|` previously came back marked native – correct
