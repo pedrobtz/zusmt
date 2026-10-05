@@ -64,5 +64,11 @@ jobs:
   gctorture:
     uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@v1
 
+  # The rchk image has no GMP, so configure failed inside it and nothing was
+  # analysed -- which passed silently until r-actions began failing on it.
+  # system-packages bakes libgmp-dev into a local image derived from it. The
+  # image is LLVM 14 with libc++ 14, which is why patch rule 16 exists.
   rchk:
     uses: pedrobtz/r-actions/.github/workflows/rchk.yml@v1
+    with:
+      system-packages: libgmp-dev
