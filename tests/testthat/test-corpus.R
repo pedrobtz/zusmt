@@ -30,7 +30,7 @@ test_that("the corpus is present and every file declares a logic and a result", 
   for (f in files) {
     # smt_logics() again, rather than a third copy of the list.
     expect_true(corpus_header(f, "logic") %in% smt_logics(), info = basename(f))
-    expect_true(corpus_header(f, "expect") %in% c("sat", "unsat", "unknown"),
+    expect_true(corpus_header(f, "expect") %in% c("sat", "unsat", "unknown", "unsupported"),
                 info = basename(f))
   }
 })
@@ -41,8 +41,16 @@ test_that("every corpus file gets the result it declares", {
     expected <- corpus_header(f, "expect")
 
     s <- smt_solver(logic)
-    smt_assert(s, paste(readLines(f, warn = FALSE), collapse = "\n"))
+    text <- paste(readLines(f, warn = FALSE), collapse = "\n")
 
+    # "unsupported": input outside the logic, which must be refused rather
+    # than answered -- the difference logics used to answer it wrongly.
+    if (expected == "unsupported") {
+      expect_error(smt_assert(s, text), class = "zusmt_unsupported_input",
+                   info = basename(f))
+      next
+    }
+    smt_assert(s, text)
     expect_identical(smt_check(s), expected, info = basename(f))
   }
 })

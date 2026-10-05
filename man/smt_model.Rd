@@ -8,10 +8,15 @@ smt_model(solver)
 }
 \arguments{
 \item{solver}{A solver from \code{\link[=smt_solver]{smt_solver()}}, on which \code{\link[=smt_check]{smt_check()}} has just
-returned \code{"sat"}.}
+returned \code{"sat"}. A model is refused, with an error of class
+\code{zusmt_stale_result}, once anything that can change the answer has been
+sent with \code{\link[=smt_assert]{smt_assert()}} since -- an assertion, \code{push} or \code{pop} -- because
+it would describe a problem that no longer exists. Commands that only
+read, such as \verb{(get-value ...)} or \verb{(echo ...)}, and declarations do not
+affect it.}
 }
 \value{
-A named list, one element per 0-ary declaration. Booleans come back
+A named list, one element per 0-ary declaration, each name once. Booleans come back
 as logicals and numbers as doubles carrying an \code{"exact"} attribute with
 the solver's exact rational, since an SMT rational need not be
 representable as a double. Values of other sorts come back as the solver's

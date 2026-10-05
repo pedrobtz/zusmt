@@ -7,10 +7,13 @@
 // hand-written destructor to get wrong.
 
 #include "boundary.h"
+#include "difference_logic.h"
 #include "r_compat.h"
 
 #include <api/Interpret.h>
 #include <api/MainSolver.h>
+#include <api/smt2tokens.h>
+#include <common/ApiException.h>
 #include <logics/ArithLogic.h>
 #include <logics/Logic.h>
 #include <logics/LogicFactory.h>
@@ -24,6 +27,7 @@
 #include <stdexcept>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -39,6 +43,107 @@ public:
 
     opensmt::Logic & theLogic() { return *logic; }
     opensmt::vec<opensmt::SymRef> const & declarations() const { return user_declarations; }
+
+    // Set for QF_IDL and QF_RDL, whose solver reads only difference atoms.
+    bool difference_logic = false;
+
+    // One top-level command. interp() is upstream's, and runs everything but
+    // an assert under a difference logic: that one is checked between being
+    // parsed and reaching the solver, which interp() has no hook for. The
+    // assert branch below is interp()'s own t_assert case plus that check.
+    void command(opensmt::ASTNode & n) {
+        if (!difference_logic || n.getToken().x != opensmt::tokens::t_assert || !isInitialized()) {
+            interp(n);
+            return;
+        }
+        opensmt::PTRef tr = opensmt::PTRef_Undef;
+        try {
+            opensmt::ASTNode const & asrt = **(n.children->begin());
+            opensmt::LetRecords letRecords;
+            tr = parseTerm(asrt, letRecords);
+        } catch (opensmt::ApiException const & e) {
+            notify_formatted(true, e.what());
+            return;
+        }
+        if (tr == opensmt::PTRef_Undef) {
+            notify_formatted(true, "assertion returns an unknown sort");
+            return;
+        }
+        // Throws before anything is inserted, so a refused assertion leaves
+        // the solver exactly as it was.
+        check_difference_atoms(tr);
+        assertions.push(tr);
+        try {
+            main_solver->insertFormula(tr);
+            notify_success();
+        } catch (opensmt::ApiException const & e) {
+            notify_formatted(true, e.what());
+        }
+    }
+
+private:
+    // Every arithmetic atom in the assertion must be one the difference-logic
+    // solver can read; see difference_logic.h. Besides inequalities and
+    // equalities, two constructs become atoms only during preprocessing, and
+    // are checked as the atoms they will become: (distinct a b ...) turns into
+    // the pairwise (= a b), and an arithmetic (ite c t e) into a fresh
+    // variable v with (= v t) and (= v e).
+    void check_difference_atoms(opensmt::PTRef root) {
+        auto & arith = dynamic_cast<opensmt::ArithLogic &>(*logic);
+        std::unordered_set<uint32_t> seen;
+        std::vector<opensmt::PTRef> pending{root};
+
+        auto require = [&](opensmt::PTRef atom, bool ok) {
+            if (ok) return;
+            throw zusmt::condition_error(
+                "zusmt_unsupported_input",
+                std::string(arith.getName()) +
+                    " accepts only difference constraints -- comparisons of the form "
+                    "(op (- x y) c), (op x c) or (op x y) -- and this assertion contains " +
+                    arith.printTerm(atom) +
+                    ", which is not one. The assertion was not added. Use " +
+                    (arith.hasReals() ? "QF_LRA" : "QF_LIA") +
+                    " for general linear arithmetic.");
+        };
+        // An equality the preprocessor will build; trivially true or false
+        // ones need no theory solver at all.
+        auto require_equality = [&](opensmt::PTRef a, opensmt::PTRef b, opensmt::PTRef context) {
+            opensmt::PTRef const eq = arith.mkEq(a, b);
+            if (eq == arith.getTerm_true() || eq == arith.getTerm_false()) return;
+            require(context, arith.isNumEq(eq) && zusmt::dl_equality(arith, eq, true));
+        };
+
+        while (!pending.empty()) {
+            opensmt::PTRef const t = pending.back();
+            pending.pop_back();
+            if (!seen.insert(t.x).second) continue;
+
+            // Copied out: mkEq() below may grow the term table, which
+            // invalidates references into it.
+            std::vector<opensmt::PTRef> args;
+            {
+                opensmt::Pterm const & term = arith.getPterm(t);
+                for (int i = 0; i < term.size(); ++i) args.push_back(term[i]);
+            }
+
+            if (arith.isLeq(t)) {
+                require(t, zusmt::dl_inequality(arith, t, true));
+            } else if (arith.isNumEq(t)) {
+                require(t, zusmt::dl_equality(arith, t, true));
+            } else if (arith.isDisequality(t) && !args.empty() &&
+                       arith.isSortNum(arith.getSortRef(args[0]))) {
+                for (std::size_t i = 0; i < args.size(); ++i) {
+                    for (std::size_t j = i + 1; j < args.size(); ++j) {
+                        require_equality(args[i], args[j], t);
+                    }
+                }
+            } else if (arith.isIte(t) && arith.isSortNum(arith.getSortRef(t))) {
+                require_equality(t, args[1], t);
+                require_equality(t, args[2], t);
+            }
+            for (opensmt::PTRef const arg : args) pending.push_back(arg);
+        }
+    }
 };
 
 struct SolverHandle {
@@ -47,6 +152,13 @@ struct SolverHandle {
     // reorder.
     std::unique_ptr<opensmt::SMTConfig> config;
     std::unique_ptr<RInterpret> interp;
+    std::string logic;
+
+    // Whether the solver's status still describes the current assertions.
+    // OpenSMT leaves the status of the last check in place when formulas are
+    // added, so without this a model, core or interpolant from an earlier
+    // check would be reported for a problem that has since changed.
+    bool result_current = false;
 };
 
 // Capture is a process-wide flag, and only end_capture() clears it. If the
@@ -73,39 +185,168 @@ private:
     bool taken_ = false;
 };
 
-// interpFile() takes a mutable char* because flex scans the buffer in place.
-void run_script(SolverHandle & handle, std::string const & script) {
+// How deeply SMT-LIB input may nest. Upstream's parser is iterative (a bison
+// stack of 1Mi entries), but the term builder and the syntax tree's
+// destructor both recurse once per level, and 100,000 levels of (not ...)
+// overflowed the C stack. R turns a guard-page hit into an error only on some
+// platforms, and even there it longjmps out of the C++ frames, abandoning the
+// interpreter's state. 50,000 levels were measured to work on an 8 MB stack;
+// this leaves a wide margin below that for smaller stacks and other compilers.
+constexpr int kMaxNesting = 10000;
+
+// One pass over the text, counting parentheses outside string literals,
+// quoted symbols and comments -- the places where a parenthesis is not
+// structure. Done before parsing, so nothing has been built yet to unwind.
+void check_nesting(std::string const & script) {
+    int depth = 0;
+    enum { code, string_literal, quoted_symbol, comment } state = code;
+    for (char const c : script) {
+        switch (state) {
+        case string_literal: if (c == '"') state = code; break;  // "" re-enters at once
+        case quoted_symbol: if (c == '|') state = code; break;
+        case comment: if (c == '\n') state = code; break;
+        case code:
+            if (c == '"') state = string_literal;
+            else if (c == '|') state = quoted_symbol;
+            else if (c == ';') state = comment;
+            else if (c == '(') {
+                if (++depth > kMaxNesting) {
+                    throw zusmt::condition_error(
+                        "zusmt_input_too_deep",
+                        "SMT-LIB input is nested more than " + std::to_string(kMaxNesting) +
+                            " levels deep; nothing was run. Name shared subterms with "
+                            "define-fun or let rather than repeating them inline.");
+                }
+            } else if (c == ')') --depth;
+            break;
+        }
+    }
+}
+
+// Commands that leave the assertions -- and so the last check's result --
+// as they were. Anything not listed, including a failed command, is treated
+// as having changed them: an unnecessary "call smt_check() again" is cheap,
+// a model for the wrong problem is not.
+bool keeps_result(opensmt::tokens::token command) {
+    using namespace opensmt::tokens;
+    switch (command) {
+    case t_declaresort: case t_definesort: case t_declarefun: case t_declareconst:
+    case t_definefun: case t_getassertions: case t_getassignment: case t_getinfo:
+    case t_setinfo: case t_getoption: case t_getproof: case t_getunsatcore:
+    case t_getvalue: case t_getmodel: case t_getinterpolants: case t_echo: case t_exit:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// A diagnostic as one line per message: upstream ends each (error ...) with
+// a blank line, which reads as a gap inside an R error message.
+std::string tidy_diagnostic(std::string const & text) {
+    std::string out;
+    for (char const c : text) {
+        if (c == '\n' && (out.empty() || out.back() == '\n')) continue;
+        out += c;
+    }
+    while (!out.empty() && (out.back() == '\n' || out.back() == ' ')) out.pop_back();
+    return out;
+}
+
+// Runs a script one command at a time and stops at the first that fails.
+// Upstream's Interpret::execute() carries on past an error, so a caller who
+// caught the error was left with a solver into which the *later* commands had
+// already been asserted. Here the commands before the failing one have taken
+// effect and the ones after it have not, and the error says which is which.
+//
+// Returns what the commands printed -- the output of (get-model), (echo ...)
+// and so on -- for the R side to write. Printing it from here would call into
+// R with C++ objects alive.
+std::string run_script(SolverHandle & handle, std::string const & script) {
+    check_nesting(script);
+
+    // Smt2newContext takes a mutable char* because flex scans the buffer in place.
     std::vector<char> buffer(script.begin(), script.end());
     buffer.push_back('\0');
 
     zusmt::clear_error();
-    CaptureScope capture;
-    int const parse_status = handle.interp->interpFile(buffer.data());
-    std::string output = capture.take();
+    opensmt::Smt2newContext context(buffer.data());
+    {
+        // Parse errors arrive two ways: the grammar's through a non-zero
+        // status, the lexer's as an exception (patch rules 4 and 14). Either
+        // way the diagnostic is in the captured output, and nothing has run.
+        CaptureScope capture;
+        int parse_status = 0;
+        std::string reason = "could not parse SMT-LIB input";
+        try {
+            parse_status = ::osmt_yyparse(&context);
+        } catch (std::runtime_error const & e) {
+            parse_status = -1;
+            reason = e.what();
+        }
+        std::string const output = tidy_diagnostic(capture.take());
+        if (parse_status != 0) {
+            throw zusmt::condition_error("zusmt_syntax_error", output.empty() ? reason : output);
+        }
+    }
 
-    // A parse failure and a semantic complaint arrive differently: the first
-    // as a non-zero return, the second through notify_formatted(error = true),
-    // which a patch rule has record itself. Both have to become exceptions, or
-    // a mistyped script would look like it had been accepted.
-    //
-    // Asking the solver rather than searching its output for "(error" matters
-    // in both directions: (echo "(error ...)") succeeds and would otherwise be
-    // rejected, and a change to upstream's error format would otherwise pass
-    // errors through as success.
-    if (parse_status != 0) {
-        throw std::runtime_error(output.empty() ? "could not parse SMT-LIB input" : output);
-    }
-    if (zusmt::error_was_reported()) {
-        throw std::runtime_error(output.empty() ? "the solver reported an error" : output);
-    }
+    opensmt::ASTNode const * root = context.getRoot();
+    if (root == nullptr || root->children == nullptr) return "";
+    std::vector<opensmt::ASTNode *> & commands = *root->children;
 
-    // Whatever the script printed is the whole point of commands like
-    // (get-model), (get-value ...), (get-info ...) and (echo ...). Capturing
-    // it to decide about errors and then dropping it made those commands run
-    // and report nothing.
-    if (!output.empty()) {
-        Rprintf("%s", output.c_str());
+    std::string printed;
+    std::size_t const total = commands.size();
+
+    // Where a failure happened, and what that means for the rest.
+    auto where = [&](std::size_t i, opensmt::tokens::token kind) {
+        std::size_t const skipped = total - i - 1;
+        std::string text = "in command " + std::to_string(i + 1) + " of " +
+                           std::to_string(total) + " (" +
+                           opensmt::tokens::tokenToName.at(kind) + ")";
+        if (i > 0) text += "; the commands before it took effect";
+        if (skipped > 0) {
+            text += std::string(i > 0 ? " and " : "; ") + "the " +
+                    (skipped == 1 ? std::string("command after it was")
+                                  : std::to_string(skipped) + " commands after it were") +
+                    " not run";
+        }
+        return text;
+    };
+
+    for (std::size_t i = 0; i < total && !handle.interp->gotExit(); ++i) {
+        opensmt::tokens::token const kind = commands[i]->getToken().x;
+        if (!keeps_result(kind)) handle.result_current = false;
+
+        CaptureScope capture;
+        zusmt::clear_error();
+        try {
+            handle.interp->command(*commands[i]);
+        } catch (zusmt::condition_error const & e) {
+            throw zusmt::condition_error(e.cls(), std::string(e.what()) + "\n" + where(i, kind),
+                                         printed);
+        }
+        // Freed as upstream's execute() does; the context frees the rest.
+        delete commands[i];
+        commands[i] = nullptr;
+        std::string const output = capture.take();
+
+        // A semantic complaint arrives through notify_formatted(error = true),
+        // which a patch rule has record itself. Asking the solver rather than
+        // searching its output for "(error" matters in both directions:
+        // (echo "(error ...)") succeeds and would otherwise be rejected, and a
+        // change to upstream's error format would otherwise pass errors
+        // through as success.
+        if (zusmt::error_was_reported()) {
+            std::string const diagnostic = tidy_diagnostic(output);
+            throw zusmt::condition_error(
+                "zusmt_smtlib_error",
+                (diagnostic.empty() ? std::string("the solver reported an error") : diagnostic) +
+                    "\n" + where(i, kind),
+                printed);
+        }
+        printed += output;
+        if (kind == opensmt::tokens::t_checksat) handle.result_current = true;
     }
+    return printed;
 }
 
 // The attribute carrying a model value's exact rational.
@@ -177,12 +418,43 @@ void check_logic_supported(std::string const & name) {
 // On a UTF-8 session the old code round-tripped correctly by coincidence --
 // the bytes passed through and the locale agreed. That is the part worth
 // fixing: it was right by accident, not by construction.
+//
+// Both can longjmp -- an invalid string, or allocation failing -- and both
+// are called with C++ objects alive, so both go through unwind_protect().
 char const * utf8_arg(SEXP x, R_xlen_t i = 0) {
-    return Rf_translateCharUTF8(STRING_ELT(x, i));
+    char const * out = nullptr;
+    zusmt::unwind_protect([&]() -> SEXP {
+        out = Rf_translateCharUTF8(STRING_ELT(x, i));
+        return R_NilValue;
+    });
+    return out;
 }
 
 SEXP utf8_string(std::string const & text) {
-    return Rf_mkCharCE(text.c_str(), CE_UTF8);
+    char const * const chars = text.c_str();
+    return zusmt::unwind_protect([&]() -> SEXP { return Rf_mkCharCE(chars, CE_UTF8); });
+}
+
+// The remaining allocations made while C++ objects are alive.
+SEXP alloc_vector(SEXPTYPE type, R_xlen_t n) {
+    return zusmt::unwind_protect([&]() -> SEXP { return Rf_allocVector(type, n); });
+}
+
+SEXP scalar_string(std::string const & text) {
+    char const * const chars = text.c_str();
+    return zusmt::unwind_protect(
+        [&]() -> SEXP { return Rf_ScalarString(Rf_mkCharCE(chars, CE_UTF8)); });
+}
+
+// The interpolant and core entry points refuse a result whose assertions have
+// changed since the check that produced it. See SolverHandle::result_current.
+void require_current(SolverHandle const & handle, char const * what) {
+    if (!handle.result_current) {
+        throw zusmt::condition_error(
+            "zusmt_stale_result",
+            std::string("the assertions have changed since the last check, so its ") + what +
+                " no longer describes them; call smt_check() again first");
+    }
 }
 
 // A TRUE/FALSE argument from R onto one of SMTConfig's boolean options.
@@ -212,10 +484,18 @@ extern "C" SEXP C_solver_new(SEXP logic_name, SEXP unsat_cores, SEXP interpolant
         if (TYPEOF(logic_name) != STRSXP || Rf_length(logic_name) != 1) {
             throw std::invalid_argument("logic must be a single string");
         }
+
+        // The R object first, while nothing on the C++ side exists: an
+        // allocation that longjmps here leaks nothing, and once the handle is
+        // built it only has to be stored, which cannot fail.
+        SEXP xp = PROTECT(R_MakeExternalPtr(nullptr, solver_tag(), R_NilValue));
+        R_RegisterCFinalizerEx(xp, finalize_solver, TRUE);
+
         std::string const name(CHAR(STRING_ELT(logic_name, 0)));
         check_logic_supported(name);
 
         auto handle = std::make_unique<SolverHandle>();
+        handle->logic = name;
         handle->config = std::make_unique<opensmt::SMTConfig>();
 
         // Before set-logic, and it has to be: the SAT solver allocates its
@@ -230,19 +510,15 @@ extern "C" SEXP C_solver_new(SEXP logic_name, SEXP unsat_cores, SEXP interpolant
                         interpolants, "interpolants");
 
         handle->interp = std::make_unique<RInterpret>(*handle->config);
+        handle->interp->difference_logic = name == "QF_IDL" || name == "QF_RDL";
 
         // The interpreter builds its logic and solver when it sees set-logic,
         // so the handle is not usable until this runs. Doing it here means a
         // bad logic name fails at solver_new() rather than at the first
         // assert.
-        run_script(*handle, "(set-logic " + name + ")");
+        (void) run_script(*handle, "(set-logic " + name + ")");
 
-        // Allocate the R object only once the C++ side is fully built: if
-        // this allocation triggers a gc that errors, there is no half-built
-        // handle to leak, and the unique_ptr still owns everything.
-        SEXP xp = PROTECT(R_MakeExternalPtr(handle.get(), solver_tag(), R_NilValue));
-        R_RegisterCFinalizerEx(xp, finalize_solver, TRUE);
-        handle.release();  // ownership now belongs to the finalizer
+        R_SetExternalPtrAddr(xp, handle.release());  // ownership now belongs to the finalizer
         UNPROTECT(1);
         return xp;
     });
@@ -260,6 +536,7 @@ extern "C" SEXP C_solver_assert_var(SEXP xp, SEXP name, SEXP negated) {
         opensmt::PTRef var = handle->interp->theLogic().mkBoolVar(utf8_arg(name));
         opensmt::Logic & logic = handle->interp->theLogic();
         opensmt::PTRef term = (Rf_asLogical(negated) == TRUE) ? logic.mkNot(var) : var;
+        handle->result_current = false;
         handle->interp->getMainSolver().insertFormula(term);
         return R_NilValue;
     });
@@ -293,6 +570,7 @@ extern "C" SEXP C_solver_check(SEXP xp, SEXP timeout) {
 
         zusmt::clear_interrupt_request();
         opensmt::sstat const status = handle->interp->getMainSolver().check();
+        handle->result_current = true;
 
         char const * result = "error";
         if (status == opensmt::s_Undef && zusmt::deadline_reached()) {
@@ -308,6 +586,13 @@ extern "C" SEXP C_solver_check(SEXP xp, SEXP timeout) {
             // search, and reporting the interrupt would name the wrong cause.
             result = "timeout";
         } else if (zusmt::interrupt_was_requested()) {
+            // Unlike the deadline, this is not guarded on s_Undef, and the
+            // asymmetry is deliberate. A late deadline is the solver's own
+            // bound and a decided answer beats it; an interrupt is the user
+            // asking for control back, and R's contract for Ctrl-C is that the
+            // call is abandoned rather than returning a value -- even if the
+            // search happened to finish in the same instant.
+            //
             // The search stopped early because a poll saw a pending
             // interrupt. Report it; solver_check() in R is what raises it,
             // because the poll that detected it also consumed R's pending
@@ -372,14 +657,15 @@ extern "C" SEXP C_supported_logics(void) {
 // Runs SMT-LIB2 text through the bundled interpreter. Any commands are
 // allowed, not only assertions: the package's job here is to be a faithful
 // front end to the solver's own language rather than a curated subset.
+// Returns what the script printed, which smt_assert() writes to the console.
 extern "C" SEXP C_solver_run(SEXP xp, SEXP text) {
     return zusmt::with_firewall([&]() -> SEXP {
         SolverHandle * handle = handle_from(xp);
         if (TYPEOF(text) != STRSXP || Rf_length(text) != 1) {
             throw std::invalid_argument("SMT-LIB input must be a single string");
         }
-        run_script(*handle, utf8_arg(text));
-        return R_NilValue;
+        std::string const printed = run_script(*handle, utf8_arg(text));
+        return scalar_string(printed);
     });
 }
 
@@ -394,28 +680,36 @@ extern "C" SEXP C_solver_model(SEXP xp) {
         if (solver.getStatus() != opensmt::s_True) {
             throw std::runtime_error("a model is only available after a satisfiable check");
         }
+        require_current(*handle, "model");
 
         opensmt::Logic & logic = handle->interp->theLogic();
         auto * arith = dynamic_cast<opensmt::ArithLogic *>(&logic);
         std::unique_ptr<opensmt::Model> model = solver.getModel();
-        opensmt::vec<opensmt::SymRef> const & declarations = handle->interp->declarations();
 
-        // Count first, so the result list can be allocated at its final size
-        // and every value stored straight into it. Collecting SEXPs in a
-        // std::vector on the way would leave them unprotected: R's collector
-        // cannot see C++ containers, and this loop allocates repeatedly.
-        R_xlen_t reported = 0;
-        for (opensmt::SymRef sym : declarations) {
-            if (logic.getSym(sym).nargs() == 0) ++reported;
+        // Each symbol once. Upstream records a declaration every time it
+        // sees one, and re-declaring a constant with the same sort is
+        // accepted and yields the same symbol -- which reported it twice, a
+        // list with duplicate names on which m$x silently picks the first.
+        std::vector<opensmt::SymRef> reported;
+        {
+            std::unordered_set<uint32_t> seen;
+            for (opensmt::SymRef sym : handle->interp->declarations()) {
+                if (logic.getSym(sym).nargs() == 0 && seen.insert(sym.x).second) {
+                    reported.push_back(sym);
+                }
+            }
         }
 
-        SEXP out = PROTECT(Rf_allocVector(VECSXP, reported));
-        SEXP names = PROTECT(Rf_allocVector(STRSXP, reported));
+        // Allocated at its final size so every value is stored straight into
+        // a protected list. Collecting SEXPs in a std::vector on the way
+        // would leave them unprotected: R's collector cannot see C++
+        // containers, and this loop allocates repeatedly.
+        R_xlen_t const n = static_cast<R_xlen_t>(reported.size());
+        SEXP out = PROTECT(alloc_vector(VECSXP, n));
+        SEXP names = PROTECT(alloc_vector(STRSXP, n));
 
-        R_xlen_t at = 0;
-        for (opensmt::SymRef sym : declarations) {
-            if (logic.getSym(sym).nargs() != 0) continue;
-
+        for (R_xlen_t at = 0; at < n; ++at) {
+            opensmt::SymRef const sym = reported[static_cast<std::size_t>(at)];
             opensmt::PTRef const term = logic.mkUninterpFun(sym, {});
             opensmt::PTRef const value = model->evaluate(term);
             SET_STRING_ELT(names, at, utf8_string(logic.getSymName(sym)));
@@ -429,22 +723,28 @@ extern "C" SEXP C_solver_model(SEXP xp) {
                 // not representable in one. Report the double for arithmetic,
                 // and the exact value as an attribute for anyone who needs it.
                 opensmt::Number const & number = arith->getNumConst(value);
-                SEXP num = PROTECT(Rf_ScalarReal(number.get_d()));
-                // num is protected across this allocation, then handed to a
-                // list that is itself protected.
-                Rf_setAttrib(num, exact_tag(), Rf_ScalarString(utf8_string(number.get_str())));
-                SET_VECTOR_ELT(out, at, num);
-                UNPROTECT(1);
+                double const approx = number.get_d();
+                std::string const exact = number.get_str();
+                char const * const exact_chars = exact.c_str();
+                SET_VECTOR_ELT(out, at, zusmt::unwind_protect([&]() -> SEXP {
+                    SEXP num = PROTECT(Rf_ScalarReal(approx));
+                    Rf_setAttrib(num, exact_tag(),
+                                 Rf_ScalarString(Rf_mkCharCE(exact_chars, CE_UTF8)));
+                    UNPROTECT(1);
+                    return num;
+                }));
             } else {
                 // Anything else -- an uninterpreted sort's value, say --
                 // comes back as the solver's own printed form rather than
                 // being coerced into an R type it does not fit.
-                SET_VECTOR_ELT(out, at, Rf_ScalarString(utf8_string(logic.printTerm(value))));
+                SET_VECTOR_ELT(out, at, scalar_string(logic.printTerm(value)));
             }
-            ++at;
         }
 
-        Rf_setAttrib(out, R_NamesSymbol, names);
+        zusmt::unwind_protect([&]() -> SEXP {
+            Rf_setAttrib(out, R_NamesSymbol, names);
+            return R_NilValue;
+        });
         UNPROTECT(2);
         return out;
     });
@@ -488,6 +788,7 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
             throw std::runtime_error(
                 "an unsat core is only available after an unsatisfiable check");
         }
+        require_current(*handle, "unsat core");
 
         // :print-cores-full is read while the core is built, not while the
         // solver is, so it can be chosen per call -- but it also governs the
@@ -519,7 +820,7 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
         // here. Upstream's own getInterpolants() reaches for it the same way.
         opensmt::TermNames const & term_names = std::as_const(solver).getTermNames();
 
-        SEXP out = PROTECT(Rf_allocVector(STRSXP, terms.size()));
+        SEXP out = PROTECT(alloc_vector(STRSXP, terms.size()));
         SEXP names = R_NilValue;
         int named = 0;
 
@@ -544,13 +845,15 @@ extern "C" SEXP C_solver_unsat_core(SEXP xp, SEXP named_only) {
         // them back without giving up the terms. Omitted entirely when
         // nothing was named, rather than filling a vector with "".
         if (want_full && named > 0) {
-            names = PROTECT(Rf_allocVector(STRSXP, terms.size()));
+            names = PROTECT(alloc_vector(STRSXP, terms.size()));
             for (int i = 0; i < terms.size(); ++i) {
                 std::string const * const name = term_names.tryGetNameForTerm(terms[i]);
-                SET_STRING_ELT(names, i,
-                               name != nullptr ? utf8_string(*name) : Rf_mkChar(""));
+                SET_STRING_ELT(names, i, utf8_string(name != nullptr ? *name : std::string()));
             }
-            Rf_setAttrib(out, R_NamesSymbol, names);
+            zusmt::unwind_protect([&]() -> SEXP {
+                Rf_setAttrib(out, R_NamesSymbol, names);
+                return R_NilValue;
+            });
             UNPROTECT(1);
         }
 
@@ -588,6 +891,7 @@ extern "C" SEXP C_solver_interpolant(SEXP xp, SEXP names) {
             throw std::runtime_error(
                 "an interpolant is only available after an unsatisfiable check");
         }
+        require_current(*handle, "proof");
 
         opensmt::TermNames const & term_names = std::as_const(solver).getTermNames();
         opensmt::ipartitions_t mask = 0;
@@ -615,17 +919,33 @@ extern "C" SEXP C_solver_interpolant(SEXP xp, SEXP names) {
             opensmt::setbit(mask, static_cast<unsigned>(index));
         }
 
-        std::unique_ptr<opensmt::InterpolationContext> context = solver.getInterpolationContext();
+        // OpenSMT interpolates QF_UF, QF_LIA and QF_LRA. For the other logics
+        // it fails in three different ways -- "Not implemented yet" on about
+        // half of QF_IDL/QF_RDL problems, "Interpolation not supported yet" on
+        // QF_AX, and an internal-sounding theory-solver message on
+        // QF_UFLIA/QF_UFLRA -- none of which says what the caller needs to
+        // know. One classed error does, with upstream's text kept for detail.
         opensmt::vec<opensmt::PTRef> interpolants;
-        context->getSingleInterpolant(interpolants, mask);
+        try {
+            std::unique_ptr<opensmt::InterpolationContext> context = solver.getInterpolationContext();
+            context->getSingleInterpolant(interpolants, mask);
+        } catch (std::exception const & e) {
+            throw zusmt::condition_error(
+                "zusmt_unsupported_input",
+                "interpolation is not supported for this " + handle->logic +
+                    " problem (OpenSMT: " + tidy_diagnostic(e.what()) +
+                    "). Interpolants are available for QF_UF, QF_LIA and QF_LRA, and only "
+                    "for some QF_IDL and QF_RDL problems.");
+        }
 
         opensmt::Logic & logic = handle->interp->theLogic();
-        SEXP out = PROTECT(Rf_allocVector(STRSXP, interpolants.size()));
+        SEXP out = PROTECT(alloc_vector(STRSXP, interpolants.size()));
         for (int i = 0; i < interpolants.size(); ++i) {
-            // pp(), as upstream's own get-interpolants uses: the pretty
-            // printer, not printTerm, so the result reads like the SMT-LIB a
-            // caller would write.
-            SET_STRING_ELT(out, i, utf8_string(logic.pp(interpolants[i])));
+            // printTerm(), as the unsat core uses, not pp(): pp() writes
+            // numerals as -1 and 16/5, which no SMT-LIB parser but OpenSMT's
+            // accepts. printTerm() writes (- 1) and (/ 16 5), so an interpolant
+            // can be handed to another solver as it stands.
+            SET_STRING_ELT(out, i, utf8_string(logic.printTerm(interpolants[i])));
         }
         UNPROTECT(1);
         return out;
@@ -645,6 +965,7 @@ extern "C" SEXP C_solver_assert_pigeonhole(SEXP xp, SEXP holes_) {
         }
         int const pigeons = holes + 1;
         opensmt::Logic & logic = handle->interp->theLogic();
+        handle->result_current = false;
 
         auto var = [&](int pigeon, int hole) {
             std::string const name = "p" + std::to_string(pigeon) + "_h" + std::to_string(hole);

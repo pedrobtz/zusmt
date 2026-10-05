@@ -27,6 +27,41 @@ solver's own language rather than a curated subset of it.
 Use \code{\link[=smt_check]{smt_check()}} rather than a \code{(check-sat)} command: it returns the result
 to R instead of printing it.
 }
+\section{Errors}{
+
+The commands in \code{text} run in order, and the first that fails stops the
+script: the commands before it have taken effect, the ones after it have
+not, and the error message names the failing command. Nothing is rolled
+back -- in particular a declaration before the failure remains.
+
+Every error inherits from class \code{zusmt_error}, after a more specific one:
+\itemize{
+\item \code{zusmt_syntax_error}: the text does not parse. Nothing has run.
+\item \code{zusmt_smtlib_error}: the solver rejected a command, such as an
+assertion using an undeclared name.
+\item \code{zusmt_unsupported_input}: an assertion is outside what the solver's
+logic can decide -- a non-difference constraint under \code{QF_IDL} or
+\code{QF_RDL}. The assertion is not added.
+\item \code{zusmt_input_too_deep}: the text nests more than 10,000 levels of
+parentheses, which would overflow the C stack. Nothing has run.
+}
+}
+
+\section{Differences from SMT-LIB}{
+
+These come from the bundled solver, and are worth knowing when running a
+script written for another one.
+\itemize{
+\item \code{pop} discards assertions but not declarations: a constant declared
+after a \code{push} is still declared after the matching \code{pop}.
+\item \verb{(get-value ...)}, \code{(get-model)} and \verb{(get-info ...)} print their answer
+rather than returning it; use \code{\link[=smt_model]{smt_model()}} for values. Constants
+introduced with \code{define-fun} do not appear in \code{\link[=smt_model]{smt_model()}}.
+\item \code{(reset)} is not supported, nor are \code{(get-info :name)} and
+\code{(get-info :version)}, nor the \code{abs} and \code{to_real} functions.
+}
+}
+
 \examples{
 s <- smt_solver("QF_LRA")
 smt_assert(s, "

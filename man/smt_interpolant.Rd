@@ -8,14 +8,17 @@ smt_interpolant(solver, a)
 }
 \arguments{
 \item{solver}{A solver from \code{\link[=smt_solver]{smt_solver()}}, created with
-\code{interpolants = TRUE}, on which \code{\link[=smt_check]{smt_check()}} has returned \code{"unsat"}.}
+\code{interpolants = TRUE}, on which \code{\link[=smt_check]{smt_check()}} has returned \code{"unsat"} and
+to which nothing has been asserted since (otherwise an error of class
+\code{zusmt_stale_result}).}
 
 \item{a}{Names of the assertions forming group \code{A}, as given with
 \verb{(! ... :named n)}. Every other assertion forms \code{B}.}
 }
 \value{
-A character vector of interpolants in the solver's printed form,
-usually of length one.
+A character vector of interpolants as SMT-LIB terms, usually of
+length one. Negative and fractional numbers are written the SMT-LIB way,
+\code{(- 1)} and \verb{(/ 16 5)}, so the result can be given to another solver.
 }
 \description{
 Given assertions that are unsatisfiable together, split into a group \code{A}
@@ -27,7 +30,13 @@ terms neither side owns alone.
 }
 \details{
 Requires a solver created with \code{smt_solver(interpolants = TRUE)}, since
-whether a proof is recorded is fixed when the solver is built.
+whether a proof is recorded is fixed when the solver is built. Enabling it
+can make \code{QF_LIA} checks much slower; see \code{\link[=smt_solver]{smt_solver()}}.
+
+The bundled solver interpolates \code{QF_UF}, \code{QF_LIA} and \code{QF_LRA} problems,
+and only some \code{QF_IDL} and \code{QF_RDL} ones. For the other logics, and for the
+difference-logic problems it cannot handle, the result is an error of class
+\code{zusmt_unsupported_input}.
 }
 \examples{
 s <- smt_solver("QF_LIA", interpolants = TRUE)

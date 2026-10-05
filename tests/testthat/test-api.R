@@ -184,3 +184,122 @@ test_that("printing a solver does not solve it", {
   elapsed <- system.time(invisible(capture.output(print(s))))[["elapsed"]]
   expect_lt(elapsed, 2)
 })
+
+test_that("a model is refused once the assertions have changed since the check", {
+  # OpenSMT keeps the last status when formulas are added, so this used to
+  # return x = 1 -- a model violating x > 100 (#29).
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, "(declare-const x Int) (assert (> x 0))")
+  expect_identical(smt_check(s), "sat")
+  smt_assert(s, "(assert (> x 100))")
+  expect_error(smt_model(s), class = "zusmt_stale_result")
+
+  # A fresh check makes it available again, and it is the right one.
+  expect_identical(smt_check(s), "sat")
+  expect_gt(smt_model(s)$x, 100)
+})
+
+test_that("push and pop also make a model stale", {
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, "(declare-const x Int) (assert (> x 0))")
+  expect_identical(smt_check(s), "sat")
+  smt_assert(s, "(push 1) (assert (> x 100))")
+  expect_error(smt_model(s), "call smt_check\\(\\) again", class = "zusmt_stale_result")
+
+  expect_identical(smt_check(s), "sat")
+  smt_assert(s, "(pop 1)")
+  expect_error(smt_model(s), class = "zusmt_stale_result")
+})
+
+test_that("commands that only read or declare leave the model available", {
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, "(declare-const x Int) (assert (= x 42))")
+  expect_identical(smt_check(s), "sat")
+  invisible(capture.output(smt_assert(s, '(get-value (x)) (echo "hi") (get-model)')))
+  smt_assert(s, "(declare-const unused Int)")
+  expect_equal(smt_model(s)$x, 42, ignore_attr = TRUE)
+
+  # And a (check-sat) sent as text counts as a check.
+  smt_assert(s, "(assert (> x 0))")
+  invisible(capture.output(smt_assert(s, "(check-sat)")))
+  expect_equal(smt_model(s)$x, 42, ignore_attr = TRUE)
+})
+
+test_that("a failing script stops at the failing command", {
+  # Upstream ran every command and reported the error afterwards, so the
+  # (assert (< x 0)) after the error had already been applied and the next
+  # check said "unsat" (#29).
+  s <- smt_solver("QF_LIA")
+  expect_error(
+    smt_assert(s, "(declare-const x Int) (assert (> nope 1)) (assert (< x 0))"),
+    class = "zusmt_smtlib_error"
+  )
+  smt_assert(s, "(assert (> x 0))")
+  expect_identical(smt_check(s), "sat")
+})
+
+test_that("the error names the failing command and what did and did not run", {
+  s <- smt_solver("QF_LIA")
+  err <- tryCatch(
+    smt_assert(s, "(declare-const x Int) (assert (> nope 1)) (assert (< x 0)) (check-sat)"),
+    error = identity
+  )
+  expect_s3_class(err, "zusmt_error")
+  expect_match(conditionMessage(err), "Unknown symbol")
+  expect_match(conditionMessage(err), "in command 2 of 4 (assert)", fixed = TRUE)
+  expect_match(conditionMessage(err), "the commands before it took effect")
+  expect_match(conditionMessage(err), "the 2 commands after it were not run")
+  expect_identical(conditionCall(err)[[1]], quote(smt_assert))
+
+  # The declaration before the failure is retained, as documented.
+  smt_assert(s, "(assert (= x 3))")
+  expect_identical(smt_check(s), "sat")
+  expect_identical(names(smt_model(s)), "x")
+})
+
+test_that("output printed before a failing command is not lost", {
+  s <- smt_solver("QF_LIA")
+  out <- capture.output(try(smt_assert(s, '(echo "before") (assert (> nope 1))'), silent = TRUE))
+  expect_true(any(grepl("before", out, fixed = TRUE)))
+})
+
+test_that("deeply nested input is an R error, and the solver survives it", {
+  # 100,000 levels overflowed the C stack inside the term builder (#29); R
+  # reported "segfault from C stack overflow" at best and died at worst.
+  s <- smt_solver("QF_UF")
+  smt_assert(s, "(declare-const p Bool)")
+  deep <- paste0("(assert ", strrep("(not ", 1e6), "p", strrep(")", 1e6), ")")
+  expect_error(smt_assert(s, deep), "nested more than", class = "zusmt_input_too_deep")
+
+  # Nothing ran, and the handle is still usable.
+  smt_assert(s, "(assert p)")
+  expect_identical(smt_check(s), "sat")
+
+  # Parentheses inside comments, strings and quoted symbols are not structure.
+  quoted <- paste0("(declare-const |", strrep("(", 2e4), "| Bool) ; ", strrep("(", 2e4))
+  expect_silent(smt_assert(s, quoted))
+
+  # Within the limit, deep input still works.
+  ok <- paste0("(assert ", strrep("(not ", 5000), "p", strrep(")", 5000), ")")
+  smt_assert(s, ok)
+  expect_identical(smt_check(s), "sat")
+})
+
+test_that("lexer errors are raised with their text, and print nothing", {
+  # The lexer's two error rules printed with Rprintf, which the capture cannot
+  # see, and raised a contentless "SMT-LIB syntax error" (#29).
+  s <- smt_solver("QF_LIA")
+  expect_silent(try(smt_assert(s, "(assert {x})"), silent = TRUE))
+  expect_error(smt_assert(s, "(assert {x})"), "near \\{", class = "zusmt_syntax_error")
+
+  expect_silent(try(smt_assert(s, "(declare-const |a\\b| Int)"), silent = TRUE))
+  expect_error(smt_assert(s, "(declare-const |a\\b| Int)"), "not allowed inside",
+               class = "zusmt_syntax_error")
+})
+
+test_that("a re-declared constant appears once in the model", {
+  s <- smt_solver("QF_LIA")
+  smt_assert(s, "(declare-const x Int) (declare-const x Int) (assert (> x 0))")
+  expect_identical(smt_check(s), "sat")
+  expect_identical(names(smt_model(s)), "x")
+})

@@ -112,3 +112,63 @@ test_that("`a` must name assertions", {
   expect_error(smt_interpolant(s, character(0)), "character vector")
   expect_error(smt_interpolant(s, NA_character_), "character vector")
 })
+
+test_that("an interpolant is refused once the assertions have changed", {
+  s <- conflicting()
+  smt_assert(s, "(assert (> x 100))")
+  expect_error(smt_interpolant(s, "A"), class = "zusmt_stale_result")
+})
+
+test_that("interpolants are written in SMT-LIB numerals", {
+  # pp() wrote -64/5, which no parser but OpenSMT's accepts (#29).
+  s <- smt_solver("QF_LRA", interpolants = TRUE)
+  smt_assert(s, "(declare-const x Real) (declare-const y Real)
+    (assert (! (and (> (* 5 x) 16) (= y (* 4 x))) :named A))
+    (assert (! (< y 3) :named B))")
+  expect_identical(smt_check(s), "unsat")
+  itp <- smt_interpolant(s, "A")
+
+  # No bare negative numeral and no bare p/q.
+  expect_false(any(grepl("(^|[ (])-[0-9]", itp)))
+  expect_false(any(grepl("[0-9]/[0-9]", itp)))
+
+  # And it is still an interpolant: A implies it, and it contradicts B.
+  v <- smt_solver("QF_LRA")
+  smt_assert(v, sprintf("(declare-const x Real) (declare-const y Real)
+    (assert (and (> (* 5 x) 16) (= y (* 4 x)))) (assert (not %s))", itp))
+  expect_identical(smt_check(v), "unsat")
+  w <- smt_solver("QF_LRA")
+  smt_assert(w, sprintf("(declare-const y Real) (assert %s) (assert (< y 3))", itp))
+  expect_identical(smt_check(w), "unsat")
+})
+
+test_that("a logic the solver cannot interpolate gives one classed error", {
+  s <- smt_solver("QF_AX", interpolants = TRUE)
+  smt_assert(s, "(declare-sort E 0) (declare-const a (Array E E))
+    (declare-const i E) (declare-const e E) (declare-const f E)
+    (assert (! (= (select (store a i e) i) f) :named A))
+    (assert (! (not (= e f)) :named B))")
+  expect_identical(smt_check(s), "unsat")
+  expect_error(smt_interpolant(s, "A"), "interpolation is not supported for this QF_AX",
+               class = "zusmt_unsupported_input")
+})
+
+test_that("interpolation can stop QF_LIA from terminating, and a timeout bounds it", {
+  # 2x = y = 2z + 1 is unsat by parity, and decided instantly -- unless
+  # interpolation is on, which disables the cuts that decide it (#29). This
+  # pins the documented behaviour; if a future OpenSMT returns "unsat" here,
+  # that is an improvement and the documentation can say so.
+  skip_on_cran()
+  body <- "(declare-const x Int) (declare-const y Int) (declare-const z Int)
+    (assert (! (and (= (* 2 x) y) (= y (+ (* 2 z) 1))) :named A))
+    (assert (! (> z 0) :named B))"
+
+  plain <- smt_solver("QF_LIA")
+  smt_assert(plain, body)
+  expect_identical(smt_check(plain), "unsat")
+
+  s <- smt_solver("QF_LIA", interpolants = TRUE)
+  smt_assert(s, body)
+  expect_warning(result <- smt_check(s, timeout = 2), class = "zusmt_timeout")
+  expect_identical(result, "unknown")
+})
