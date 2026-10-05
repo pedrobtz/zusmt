@@ -305,6 +305,66 @@ patch_exact options/SMTConfig.h \
   's@strcmp(o_name, o_produce_proofs) == 0@& || strcmp(o_name, o_produce_unsat_cores) == 0@' \
   'isPreInitializationOption(): :produce-unsat-cores cannot move either'
 
+# 13. A wrong answer, not a crash. QF_IDL and QF_RDL are decided by
+#    STPSolver, whose parseRef() reads every atom as a difference constraint
+#    (<= c (+ x (* -1 y))) and checks that only with assert() -- compiled out
+#    under NDEBUG, as R builds. Given (< (+ x y) z) it read a coefficient and a
+#    variable out of whatever the term table held, and the solver answered
+#    "sat" with a model violating the input, or "unsat" for a satisfiable one.
+#
+#    src/solver.cc refuses such assertions before they reach the solver; this
+#    is the backstop behind it, so that any atom that slips past is an error
+#    rather than a silently wrong answer. The shape is src/difference_logic.h,
+#    the same predicate the front-end check uses, so the two cannot disagree.
+echo "==> difference logic: refuse atoms the solver cannot read"
+patch_exact tsolvers/stpsolver/STPSolver_implementations.hpp \
+  's|^#include "Converter.h"$|#include "Converter.h"\
+#include <difference_logic.h>  /* zusmt: patch rule 13 */|; s|^typename STPSolver<T>::ParsedPTRef STPSolver<T>::parseRef(PTRef ref) const {$|&\
+    if (not logic.isLeq(ref) or not zusmt::dl_inequality(logic, ref, false)) { /* zusmt: patch rule 13 */\
+        throw ApiException("an atom that is not a difference constraint reached the difference-logic solver: " + logic.printTerm(ref));\
+    }|' \
+  'parseRef(): throw on a non-difference atom instead of misreading it'
+
+# 14. The two lexer error rules print with Rprintf and then call
+#    zusmt::fatal(). Rule 4's parser fix does not reach them: Rprintf goes
+#    straight to the console, where the R API's capture cannot see it, so an
+#    illegal character such as `{` printed its diagnostic and raised a
+#    contentless "SMT-LIB syntax error". Through zusmt::rerr() the text lands
+#    in the capture and run_script() puts it in the condition.
+#
+#    They then return YYerror rather than calling rule 4's zusmt::fatal(). An
+#    exception thrown from the lexer unwinds through osmt_yyparse() without
+#    running the grammar's %destructor rules, so every semantic value on the
+#    parser stack leaked -- at least the empty command_list, which valgrind
+#    reported as definitely lost. Bison (>= 3.6) treats YYerror from the
+#    scanner as a syntax error already reported: no yyerror() call, and with no
+#    `error` productions the parse aborts, freeing the stack, and returns 1.
+patch_exact parsers/smt2new/smt2newlexer.cc \
+  's|{ Rprintf("Syntax error at line %d near %s, \\\\ not allowed inside \| ... \|\\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal("SMT-LIB syntax error"); }|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << ", \\\\ not allowed inside \| ... \|\\n"; return YYerror; }|; s|{ Rprintf( "Syntax error at line %d near %s\\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal("SMT-LIB syntax error"); }|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << "\\n"; return YYerror; }|' \
+  'lexer syntax errors via rerr(), returned to the parser as YYerror'
+
+# 15. flex 2.6.4's yy_scan_buffer() -- under yy_scan_string() -- allocates the
+#    buffer state and never sets yy_bs_lineno, which is yylineno for a
+#    reentrant scanner. Every token's location (YY_USER_ACTION) and every
+#    syntax error's "at line N" read that uninitialised int; valgrind reports
+#    it once rule 14 streams it. A file-backed scanner gets its line set by
+#    yy_init_buffer(); the string-backed one has to be told.
+echo "==> lexer: start the line count of a string scanner at 1"
+patch_exact parsers/smt2new/smt2newlexer.cc \
+  's|^        yy_scan_string(ib, scanner);$|&\
+        yyset_lineno(1, scanner); /* zusmt: patch rule 15 */|' \
+  'init_scanner(): yyset_lineno(1) after yy_scan_string()'
+
+# 16. The one C++20 ranges algorithm compiled under NDEBUG. libc++ 14 -- the
+#    rchk image's, LLVM 14 on Ubuntu 22.04 -- has no std::ranges::any_of, so
+#    the package did not build there and rchk analysed nothing. The iterator
+#    form is the same call on every standard library. (Model.cc's
+#    std::ranges::all_of sits inside an assert() and is compiled out.)
+echo "==> std::ranges::any_of -> std::any_of (libc++ 14)"
+patch_exact logics/ArithLogic.cc \
+  's|std::ranges::any_of(poly, |std::any_of(poly.begin(), poly.end(), |' \
+  'polyToPTRefSubstitution(): iterator-pair any_of for libc++ 14'
+
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
 # nothing here patches. Cheap to assert, and it needs no linker.

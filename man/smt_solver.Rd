@@ -9,16 +9,27 @@ smt_solver(logic = "QF_UF", unsat_cores = FALSE, interpolants = FALSE)
 \arguments{
 \item{logic}{An SMT-LIB logic name; \code{\link[=smt_logics]{smt_logics()}} returns the ones this
 package supports. They cover uninterpreted functions, linear integer and
-real arithmetic, their combinations, difference logic and arrays.}
+real arithmetic, their combinations, difference logic and arrays.
+
+The difference logics, \code{QF_IDL} and \code{QF_RDL}, accept only comparisons of
+the form \verb{(op (- x y) c)}, \verb{(op x c)} or \verb{(op x y)}, where \code{x} and \code{y}
+are constants and \code{c} a number, together with \code{distinct} and arithmetic
+\code{ite} terms that reduce to those. Any other arithmetic -- a sum of two
+variables, a coefficient other than 1 -- is refused by \code{\link[=smt_assert]{smt_assert()}}
+with an error of class \code{zusmt_unsupported_input}; use \code{QF_LIA} or
+\code{QF_LRA} for it.}
 
 \item{unsat_cores}{Whether to record enough of the search to report an
 unsat core with \code{\link[=smt_unsat_core]{smt_unsat_core()}}. Costs time and memory on every solve,
 so it is off by default.}
 
-\item{interpolants}{Whether to enable Craig interpolation, after which
-\verb{(get-interpolants ...)} can be sent with \code{\link[=smt_assert]{smt_assert()}}. There is no
-dedicated R function for it yet; the output is printed rather than
-returned.}
+\item{interpolants}{Whether to enable Craig interpolation, for
+\code{\link[=smt_interpolant]{smt_interpolant()}}.
+
+This changes how integer problems are solved, not only what is recorded:
+OpenSMT stops deriving cuts from its proofs, which it cannot interpolate,
+so a \code{QF_LIA} problem decided instantly without interpolation may not
+terminate with it. Pass a \code{timeout} to \code{\link[=smt_check]{smt_check()}} on such solvers.}
 }
 \value{
 A solver handle, to be passed to the other \verb{smt_*()} functions.
@@ -27,6 +38,11 @@ A solver handle, to be passed to the other \verb{smt_*()} functions.
 to set later with \code{\link[=smt_assert]{smt_assert()}}, because the solver decides whether to
 record a proof when it is built. Setting them afterwards cannot work, and
 the solver rejects the attempt.
+
+Each solver holds memory in the bundled C++ library -- on the order of
+100 KB even when empty -- that R's garbage collector does not see, so a
+loop creating many solvers can accumulate far more than R's own memory
+use suggests. Call \code{\link[=smt_release]{smt_release()}} on each one when it is done.
 }
 \description{
 Creates a solver for one of the SMT-LIB logics, ready to be given assertions
@@ -39,5 +55,6 @@ smt_assert(s, "(declare-const x Int) (assert (> x 3))")
 smt_check(s)
 }
 \seealso{
-\code{\link[=smt_assert]{smt_assert()}}, \code{\link[=smt_check]{smt_check()}}, \code{\link[=smt_model]{smt_model()}}, \code{\link[=smt_unsat_core]{smt_unsat_core()}}
+\code{\link[=smt_assert]{smt_assert()}}, \code{\link[=smt_check]{smt_check()}}, \code{\link[=smt_model]{smt_model()}}, \code{\link[=smt_unsat_core]{smt_unsat_core()}},
+\code{\link[=smt_interpolant]{smt_interpolant()}}
 }

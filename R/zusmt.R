@@ -7,20 +7,37 @@
 #' @param logic An SMT-LIB logic name; [smt_logics()] returns the ones this
 #'   package supports. They cover uninterpreted functions, linear integer and
 #'   real arithmetic, their combinations, difference logic and arrays.
+#'
+#'   The difference logics, `QF_IDL` and `QF_RDL`, accept only comparisons of
+#'   the form `(op (- x y) c)`, `(op x c)` or `(op x y)`, where `x` and `y`
+#'   are constants and `c` a number, together with `distinct` and arithmetic
+#'   `ite` terms that reduce to those. Any other arithmetic -- a sum of two
+#'   variables, a coefficient other than 1 -- is refused by [smt_assert()]
+#'   with an error of class `zusmt_unsupported_input`; use `QF_LIA` or
+#'   `QF_LRA` for it.
 #' @param unsat_cores Whether to record enough of the search to report an
 #'   unsat core with [smt_unsat_core()]. Costs time and memory on every solve,
 #'   so it is off by default.
-#' @param interpolants Whether to enable Craig interpolation, after which
-#'   `(get-interpolants ...)` can be sent with [smt_assert()]. There is no
-#'   dedicated R function for it yet; the output is printed rather than
-#'   returned.
+#' @param interpolants Whether to enable Craig interpolation, for
+#'   [smt_interpolant()].
+#'
+#'   This changes how integer problems are solved, not only what is recorded:
+#'   OpenSMT stops deriving cuts from its proofs, which it cannot interpolate,
+#'   so a `QF_LIA` problem decided instantly without interpolation may not
+#'   terminate with it. Pass a `timeout` to [smt_check()] on such solvers.
 #' @return A solver handle, to be passed to the other `smt_*()` functions.
 #'
 #'   `unsat_cores` and `interpolants` are arguments here, rather than options
 #'   to set later with [smt_assert()], because the solver decides whether to
 #'   record a proof when it is built. Setting them afterwards cannot work, and
 #'   the solver rejects the attempt.
-#' @seealso [smt_assert()], [smt_check()], [smt_model()], [smt_unsat_core()]
+#'
+#'   Each solver holds memory in the bundled C++ library -- on the order of
+#'   100 KB even when empty -- that R's garbage collector does not see, so a
+#'   loop creating many solvers can accumulate far more than R's own memory
+#'   use suggests. Call [smt_release()] on each one when it is done.
+#' @seealso [smt_assert()], [smt_check()], [smt_model()], [smt_unsat_core()],
+#'   [smt_interpolant()]
 #' @export
 #' @examples
 #' s <- smt_solver("QF_LIA")
@@ -50,7 +67,9 @@ smt_solver <- function(logic = "QF_UF", unsat_cores = FALSE,
 #' on after the fact.
 #'
 #' @param solver A solver from [smt_solver()], created with
-#'   `unsat_cores = TRUE`, on which [smt_check()] has returned `"unsat"`.
+#'   `unsat_cores = TRUE`, on which [smt_check()] has returned `"unsat"` --
+#'   and to which nothing has been asserted since: a core is refused with an
+#'   error of class `zusmt_stale_result` once the assertions have changed.
 #' @param named_only Whether to report only assertions named with
 #'   `(! ... :named n)`, which is what SMT-LIB means by an unsat core and what
 #'   the `(get-unsat-core)` command returns. `FALSE`, the default, reports the
@@ -103,6 +122,35 @@ smt_logics <- function() {
 #' Use [smt_check()] rather than a `(check-sat)` command: it returns the result
 #' to R instead of printing it.
 #'
+#' @section Errors:
+#' The commands in `text` run in order, and the first that fails stops the
+#' script: the commands before it have taken effect, the ones after it have
+#' not, and the error message names the failing command. Nothing is rolled
+#' back -- in particular a declaration before the failure remains.
+#'
+#' Every error inherits from class `zusmt_error`, after a more specific one:
+#'
+#' * `zusmt_syntax_error`: the text does not parse. Nothing has run.
+#' * `zusmt_smtlib_error`: the solver rejected a command, such as an
+#'   assertion using an undeclared name.
+#' * `zusmt_unsupported_input`: an assertion is outside what the solver's
+#'   logic can decide -- a non-difference constraint under `QF_IDL` or
+#'   `QF_RDL`. The assertion is not added.
+#' * `zusmt_input_too_deep`: the text nests more than 10,000 levels of
+#'   parentheses, which would overflow the C stack. Nothing has run.
+#'
+#' @section Differences from SMT-LIB:
+#' These come from the bundled solver, and are worth knowing when running a
+#' script written for another one.
+#'
+#' * `pop` discards assertions but not declarations: a constant declared
+#'   after a `push` is still declared after the matching `pop`.
+#' * `(get-value ...)`, `(get-model)` and `(get-info ...)` print their answer
+#'   rather than returning it; use [smt_model()] for values. Constants
+#'   introduced with `define-fun` do not appear in [smt_model()].
+#' * `(reset)` is not supported, nor are `(get-info :name)` and
+#'   `(get-info :version)`, nor the `abs` and `to_real` functions.
+#'
 #' @param solver A solver from [smt_solver()].
 #' @param text A single string of SMT-LIB2 input. Newlines are fine, and
 #'   several commands may appear in one call.
@@ -124,7 +172,8 @@ smt_assert <- function(solver, text) {
   if (!is.character(text) || length(text) != 1L) {
     stop("`text` must be a single string", call. = FALSE)
   }
-  .Call(C_solver_run, solver$ptr, text)
+  printed <- .Call(C_solver_run, solver$ptr, text)
+  if (nzchar(printed)) cat(printed)
   invisible(solver)
 }
 
@@ -168,8 +217,13 @@ smt_check <- function(solver, timeout = Inf) {
 #' The model of a satisfiable problem
 #'
 #' @param solver A solver from [smt_solver()], on which [smt_check()] has just
-#'   returned `"sat"`.
-#' @return A named list, one element per 0-ary declaration. Booleans come back
+#'   returned `"sat"`. A model is refused, with an error of class
+#'   `zusmt_stale_result`, once anything that can change the answer has been
+#'   sent with [smt_assert()] since -- an assertion, `push` or `pop` -- because
+#'   it would describe a problem that no longer exists. Commands that only
+#'   read, such as `(get-value ...)` or `(echo ...)`, and declarations do not
+#'   affect it.
+#' @return A named list, one element per 0-ary declaration, each name once. Booleans come back
 #'   as logicals and numbers as doubles carrying an `"exact"` attribute with
 #'   the solver's exact rational, since an SMT rational need not be
 #'   representable as a double. Values of other sorts come back as the solver's
@@ -198,14 +252,23 @@ smt_model <- function(solver) {
 #' terms neither side owns alone.
 #'
 #' Requires a solver created with `smt_solver(interpolants = TRUE)`, since
-#' whether a proof is recorded is fixed when the solver is built.
+#' whether a proof is recorded is fixed when the solver is built. Enabling it
+#' can make `QF_LIA` checks much slower; see [smt_solver()].
+#'
+#' The bundled solver interpolates `QF_UF`, `QF_LIA` and `QF_LRA` problems,
+#' and only some `QF_IDL` and `QF_RDL` ones. For the other logics, and for the
+#' difference-logic problems it cannot handle, the result is an error of class
+#' `zusmt_unsupported_input`.
 #'
 #' @param solver A solver from [smt_solver()], created with
-#'   `interpolants = TRUE`, on which [smt_check()] has returned `"unsat"`.
+#'   `interpolants = TRUE`, on which [smt_check()] has returned `"unsat"` and
+#'   to which nothing has been asserted since (otherwise an error of class
+#'   `zusmt_stale_result`).
 #' @param a Names of the assertions forming group `A`, as given with
 #'   `(! ... :named n)`. Every other assertion forms `B`.
-#' @return A character vector of interpolants in the solver's printed form,
-#'   usually of length one.
+#' @return A character vector of interpolants as SMT-LIB terms, usually of
+#'   length one. Negative and fractional numbers are written the SMT-LIB way,
+#'   `(- 1)` and `(/ 16 5)`, so the result can be given to another solver.
 #' @seealso [smt_solver()], [smt_unsat_core()]
 #' @export
 #' @examples
@@ -268,4 +331,19 @@ check_solver <- function(solver) {
     stop("`solver` must come from smt_solver()", call. = FALSE)
   }
   invisible(TRUE)
+}
+
+# Called from C++ (zusmt::raise_condition in src/boundary.h) to signal an
+# error with a class of its own. Through R rather than built in C so the
+# condition's call is the smt_*() function the user called: .Call() is a
+# builtin and has no frame, so the frame before this one is that function's.
+raise_condition <- function(class, message, output = "") {
+  # Anything the earlier commands of a failing script printed, which would
+  # otherwise be lost with the error.
+  if (nzchar(output)) cat(output)
+  stop(errorCondition(
+    message,
+    class = c(class, "zusmt_error"),
+    call = sys.call(-1L)
+  ))
 }

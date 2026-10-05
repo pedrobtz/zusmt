@@ -105,3 +105,12 @@ test_that("interpolants are reachable when enabled at construction", {
     "cannot be changed at this point"
   )
 })
+
+test_that("a core is refused once the assertions have changed since the check", {
+  s <- smt_solver("QF_LIA", unsat_cores = TRUE)
+  smt_assert(s, "(declare-const x Int) (push 1) (assert (! (> x 5) :named a)) (assert (! (< x 3) :named b))")
+  expect_identical(smt_check(s), "unsat")
+  # After the pop neither assertion exists, so their core describes nothing.
+  smt_assert(s, "(pop 1)")
+  expect_error(smt_unsat_core(s), class = "zusmt_stale_result")
+})

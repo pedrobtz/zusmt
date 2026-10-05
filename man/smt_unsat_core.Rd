@@ -8,7 +8,9 @@ smt_unsat_core(solver, named_only = FALSE)
 }
 \arguments{
 \item{solver}{A solver from \code{\link[=smt_solver]{smt_solver()}}, created with
-\code{unsat_cores = TRUE}, on which \code{\link[=smt_check]{smt_check()}} has returned \code{"unsat"}.}
+\code{unsat_cores = TRUE}, on which \code{\link[=smt_check]{smt_check()}} has returned \code{"unsat"} --
+and to which nothing has been asserted since: a core is refused with an
+error of class \code{zusmt_stale_result} once the assertions have changed.}
 
 \item{named_only}{Whether to report only assertions named with
 \verb{(! ... :named n)}, which is what SMT-LIB means by an unsat core and what
