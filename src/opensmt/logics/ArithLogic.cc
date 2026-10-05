@@ -360,7 +360,7 @@ namespace {
 
     PTRef polyToPTRefSubstitution(ArithLogic & logic, PTRef const var, LAPoly & poly) {
         if ((logic.hasUFs() or logic.hasArrays()) and logic.isVar(var)) {
-            if (std::ranges::any_of(poly, [&logic](auto const & term) {
+            if (std::any_of(poly.begin(), poly.end(), [&logic](auto const & term) {
                     return term.var != PTRef_Undef and not logic.isVar(term.var);
                 })) {
                 return PTRef_Undef;

@@ -355,6 +355,16 @@ patch_exact parsers/smt2new/smt2newlexer.cc \
         yyset_lineno(1, scanner); /* zusmt: patch rule 15 */|' \
   'init_scanner(): yyset_lineno(1) after yy_scan_string()'
 
+# 16. The one C++20 ranges algorithm compiled under NDEBUG. libc++ 14 -- the
+#    rchk image's, LLVM 14 on Ubuntu 22.04 -- has no std::ranges::any_of, so
+#    the package did not build there and rchk analysed nothing. The iterator
+#    form is the same call on every standard library. (Model.cc's
+#    std::ranges::all_of sits inside an assert() and is compiled out.)
+echo "==> std::ranges::any_of -> std::any_of (libc++ 14)"
+patch_exact logics/ArithLogic.cc \
+  's|std::ranges::any_of(poly, |std::any_of(poly.begin(), poly.end(), |' \
+  'polyToPTRefSubstitution(): iterator-pair any_of for libc++ 14'
+
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
 # nothing here patches. Cheap to assert, and it needs no linker.
