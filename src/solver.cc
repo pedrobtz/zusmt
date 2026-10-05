@@ -729,9 +729,12 @@ extern "C" SEXP C_solver_model(SEXP xp) {
                 char const * const exact_chars = exact.c_str();
                 SET_VECTOR_ELT(out, at, zusmt::unwind_protect([&]() -> SEXP {
                     SEXP num = PROTECT(Rf_ScalarReal(approx));
-                    Rf_setAttrib(num, exact_tag(),
-                                 Rf_ScalarString(Rf_mkCharCE(exact_chars, CE_UTF8)));
-                    UNPROTECT(1);
+                    // Protected before the call: exact_tag() installs its
+                    // symbol on first use, which can allocate, and argument
+                    // evaluation order is unspecified (rchk flags it).
+                    SEXP exact_value = PROTECT(Rf_ScalarString(Rf_mkCharCE(exact_chars, CE_UTF8)));
+                    Rf_setAttrib(num, exact_tag(), exact_value);
+                    UNPROTECT(2);
                     return num;
                 }));
             } else {
