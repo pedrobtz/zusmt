@@ -271,9 +271,10 @@ std::string run_script(SolverHandle & handle, std::string const & script) {
     zusmt::clear_error();
     opensmt::Smt2newContext context(buffer.data());
     {
-        // Parse errors arrive two ways: the grammar's through a non-zero
-        // status, the lexer's as an exception (patch rules 4 and 14). Either
-        // way the diagnostic is in the captured output, and nothing has run.
+        // Parse errors arrive as a non-zero status, the lexer's too (patch
+        // rule 14 returns YYerror, so the parser frees its stack). Only a
+        // flex internal error still throws (patch rule 4). Either way the
+        // diagnostic is in the captured output, and nothing has run.
         CaptureScope capture;
         int parse_status = 0;
         std::string reason = "could not parse SMT-LIB input";

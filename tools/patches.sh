@@ -331,9 +331,29 @@ patch_exact tsolvers/stpsolver/STPSolver_implementations.hpp \
 #    illegal character such as `{` printed its diagnostic and raised a
 #    contentless "SMT-LIB syntax error". Through zusmt::rerr() the text lands
 #    in the capture and run_script() puts it in the condition.
+#
+#    They then return YYerror rather than calling rule 4's zusmt::fatal(). An
+#    exception thrown from the lexer unwinds through osmt_yyparse() without
+#    running the grammar's %destructor rules, so every semantic value on the
+#    parser stack leaked -- at least the empty command_list, which valgrind
+#    reported as definitely lost. Bison (>= 3.6) treats YYerror from the
+#    scanner as a syntax error already reported: no yyerror() call, and with no
+#    `error` productions the parse aborts, freeing the stack, and returns 1.
 patch_exact parsers/smt2new/smt2newlexer.cc \
-  's|{ Rprintf("Syntax error at line %d near %s, \\\\ not allowed inside \| ... \|\\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << ", \\\\ not allowed inside \| ... \|\\n"; zusmt::fatal|; s|{ Rprintf( "Syntax error at line %d near %s\\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << "\\n"; zusmt::fatal|' \
-  'lexer syntax errors via rerr(), so the R API can capture them'
+  's|{ Rprintf("Syntax error at line %d near %s, \\\\ not allowed inside \| ... \|\\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal("SMT-LIB syntax error"); }|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << ", \\\\ not allowed inside \| ... \|\\n"; return YYerror; }|; s|{ Rprintf( "Syntax error at line %d near %s\\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal("SMT-LIB syntax error"); }|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << "\\n"; return YYerror; }|' \
+  'lexer syntax errors via rerr(), returned to the parser as YYerror'
+
+# 15. flex 2.6.4's yy_scan_buffer() -- under yy_scan_string() -- allocates the
+#    buffer state and never sets yy_bs_lineno, which is yylineno for a
+#    reentrant scanner. Every token's location (YY_USER_ACTION) and every
+#    syntax error's "at line N" read that uninitialised int; valgrind reports
+#    it once rule 14 streams it. A file-backed scanner gets its line set by
+#    yy_init_buffer(); the string-backed one has to be told.
+echo "==> lexer: start the line count of a string scanner at 1"
+patch_exact parsers/smt2new/smt2newlexer.cc \
+  's|^        yy_scan_string(ib, scanner);$|&\
+        yyset_lineno(1, scanner); /* zusmt: patch rule 15 */|' \
+  'init_scanner(): yyset_lineno(1) after yy_scan_string()'
 
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
