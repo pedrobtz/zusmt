@@ -305,6 +305,36 @@ patch_exact options/SMTConfig.h \
   's@strcmp(o_name, o_produce_proofs) == 0@& || strcmp(o_name, o_produce_unsat_cores) == 0@' \
   'isPreInitializationOption(): :produce-unsat-cores cannot move either'
 
+# 13. A wrong answer, not a crash. QF_IDL and QF_RDL are decided by
+#    STPSolver, whose parseRef() reads every atom as a difference constraint
+#    (<= c (+ x (* -1 y))) and checks that only with assert() -- compiled out
+#    under NDEBUG, as R builds. Given (< (+ x y) z) it read a coefficient and a
+#    variable out of whatever the term table held, and the solver answered
+#    "sat" with a model violating the input, or "unsat" for a satisfiable one.
+#
+#    src/solver.cc refuses such assertions before they reach the solver; this
+#    is the backstop behind it, so that any atom that slips past is an error
+#    rather than a silently wrong answer. The shape is src/difference_logic.h,
+#    the same predicate the front-end check uses, so the two cannot disagree.
+echo "==> difference logic: refuse atoms the solver cannot read"
+patch_exact tsolvers/stpsolver/STPSolver_implementations.hpp \
+  's|^#include "Converter.h"$|#include "Converter.h"\
+#include <difference_logic.h>  /* zusmt: patch rule 13 */|; s|^typename STPSolver<T>::ParsedPTRef STPSolver<T>::parseRef(PTRef ref) const {$|&\
+    if (not logic.isLeq(ref) or not zusmt::dl_inequality(logic, ref, false)) { /* zusmt: patch rule 13 */\
+        throw ApiException("an atom that is not a difference constraint reached the difference-logic solver: " + logic.printTerm(ref));\
+    }|' \
+  'parseRef(): throw on a non-difference atom instead of misreading it'
+
+# 14. The two lexer error rules print with Rprintf and then call
+#    zusmt::fatal(). Rule 4's parser fix does not reach them: Rprintf goes
+#    straight to the console, where the R API's capture cannot see it, so an
+#    illegal character such as `{` printed its diagnostic and raised a
+#    contentless "SMT-LIB syntax error". Through zusmt::rerr() the text lands
+#    in the capture and run_script() puts it in the condition.
+patch_exact parsers/smt2new/smt2newlexer.cc \
+  's|{ Rprintf("Syntax error at line %d near %s, \\\\ not allowed inside \| ... \|\\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << ", \\\\ not allowed inside \| ... \|\\n"; zusmt::fatal|; s|{ Rprintf( "Syntax error at line %d near %s\\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal|{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << "\\n"; zusmt::fatal|' \
+  'lexer syntax errors via rerr(), so the R API can capture them'
+
 # A class- or namespace-scope thread_local of non-trivial type is the whole
 # mingw link failure above, and a version bump could reintroduce one in a file
 # nothing here patches. Cheap to assert, and it needs no linker.

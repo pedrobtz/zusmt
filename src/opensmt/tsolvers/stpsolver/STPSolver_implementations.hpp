@@ -6,6 +6,7 @@
 
 #include "STPSolver.h"
 #include "Converter.h"
+#include <difference_logic.h>  /* zusmt: patch rule 13 */
 
 namespace opensmt {
 
@@ -20,6 +21,9 @@ STPSolver<T>::STPSolver(SMTConfig &c, ArithLogic &l)
 
 template<class T>
 typename STPSolver<T>::ParsedPTRef STPSolver<T>::parseRef(PTRef ref) const {
+    if (not logic.isLeq(ref) or not zusmt::dl_inequality(logic, ref, false)) { /* zusmt: patch rule 13 */
+        throw ApiException("an atom that is not a difference constraint reached the difference-logic solver: " + logic.printTerm(ref));
+    }
     // inequalities are in the form (c <= (x + (-1 * y)))
     // due to how LALogic creates terms, we won't ever encounter <, >, or >= inequalities
     assert(logic.isLeq(ref));

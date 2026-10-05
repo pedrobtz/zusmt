@@ -1888,13 +1888,13 @@ YY_RULE_SETUP
 case 89:
 YY_RULE_SETUP
 #line 170 "smt2newlexer.ll"
-{ Rprintf("Syntax error at line %d near %s, \\ not allowed inside | ... |\n", yyget_lineno(yyscanner), yyget_text(yyscanner)); zusmt::fatal("SMT-LIB syntax error"); }
+{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << ", \\ not allowed inside | ... |\n"; zusmt::fatal("SMT-LIB syntax error"); }
 	YY_BREAK
 
 case 90:
 YY_RULE_SETUP
 #line 173 "smt2newlexer.ll"
-{ Rprintf( "Syntax error at line %d near %s\n", yyget_lineno(yyscanner), yyget_text(yyscanner) ); zusmt::fatal("SMT-LIB syntax error"); }
+{ zusmt::rerr() << "Syntax error at line " << yyget_lineno(yyscanner) << " near " << yyget_text(yyscanner) << "\n"; zusmt::fatal("SMT-LIB syntax error"); }
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
