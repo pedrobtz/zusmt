@@ -35,10 +35,25 @@ SMT-LIB2 commands, not only assertions. Two things make that work and are easy t
   listed the other two and not it. Patch rule 12 adds it. `C_solver_new()` sets these on the
   config before `(set-logic)`, which is the only window there is.
 - **Diagnostics are captured and raised as conditions.** `zusmt::begin_capture()` redirects the
-  shim's streams into a buffer, and `run_script()` turns anything containing `(error` — or a
-  non-zero parse status — into an exception the firewall converts to an R error. Output written
-  with `Rprintf` is *not* captured, which is why a patch rule routes the parser's own syntax errors
-  through `zusmt::rerr()` instead.
+  shim's streams into a buffer, and `run_script()` turns a reported error — or a parse failure —
+  into an exception the firewall converts to an R error. Output written with `Rprintf` is *not*
+  captured, which is why patch rules route the parser's and the lexer's syntax errors through
+  `zusmt::rerr()` instead.
+- **Scripts run one command at a time.** `run_script()` parses, then calls `RInterpret::command()`
+  per top-level command and stops at the first error — upstream's `execute()` carries on, which
+  left later commands applied behind a caught error. It also tracks
+  `SolverHandle::result_current`, cleared by any command that can change the assertions, so a
+  model, core or interpolant from an earlier check is refused rather than reported for a changed
+  problem. Printed output is *returned* to R and written by `smt_assert()`, not printed from C++.
+- **Classed errors.** Throw `zusmt::condition_error(class, message)` (src/boundary.h) for an error
+  callers should be able to catch by class; the firewall raises it through `raise_condition()` in
+  R as `c(class, "zusmt_error", "error", "condition")`. R API calls that can longjmp while C++
+  objects are alive go through `zusmt::unwind_protect()` (the cpp11 pattern).
+- **Difference logic is checked, not assumed.** `QF_IDL`/`QF_RDL` are decided by `STPSolver`,
+  whose `parseRef()` misreads any atom that is not `x - y <= c` (its guard is an `assert()`).
+  `RInterpret::command()` refuses such assertions before they reach the solver, and patch rule 13
+  makes `parseRef()` throw as a backstop; both use the one predicate in
+  [src/difference_logic.h](src/difference_logic.h).
 
 Stopping a solve -- by interrupt or by `smt_check(timeout =)` -- goes through the solver's own
 `okContinue()`, patched to call `zusmt::should_stop()`. Nothing may stop a search by longjmp or
@@ -67,6 +82,9 @@ edit, and fails if either header is missing or malformed.
 ; logic: QF_LIA
 ; expect: unsat
 ```
+
+`expect:` is `sat`, `unsat`, `unknown`, or `unsupported` for input the logic must refuse with
+`zusmt_unsupported_input` rather than answer.
 
 The supported logics are defined **once**, in `kSupportedLogics[]` in [src/solver.cc](src/solver.cc).
 `smt_logics()` reads that array, and the documentation, the corpus header check and `test-logics.R`
