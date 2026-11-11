@@ -6,8 +6,11 @@
 # reader that rchk reports statically and gctorture turns from a rare crash
 # into a reliable one -- neither of which this repository was running.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
+  schedule:
+    - cron: "10 21 * * 0"
+  workflow_dispatch:
   pull_request:
 
 name: native-checks

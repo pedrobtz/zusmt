@@ -3,8 +3,11 @@
 # The file name stays R-CMD-check.yaml because the README badge points at it;
 # the workflow's own `name:` is what the GitHub UI shows.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
+  schedule:
+    - cron: "0 21 * * 0"
+  workflow_dispatch:
   pull_request:
 
 name: R-CMD-check
