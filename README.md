@@ -4,7 +4,7 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/pedrobtz/zusmt/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedrobtz/zusmt/actions/workflows/R-CMD-check.yaml)
 [![native-checks](https://github.com/pedrobtz/zusmt/actions/workflows/native-checks.yml/badge.svg)](https://github.com/pedrobtz/zusmt/actions/workflows/native-checks.yml)
-![Coverage](https://github.com/pedrobtz/zusmt/raw/main/.github/badges/coverage.svg)
+![Coverage](https://raw.githubusercontent.com/pedrobtz/zusmt/gh-pages/badges/coverage.svg)
 <!-- badges: end -->
 
 An SMT solver in R. zusmt bundles [OpenSMT](https://github.com/usi-verification-and-security/opensmt)
